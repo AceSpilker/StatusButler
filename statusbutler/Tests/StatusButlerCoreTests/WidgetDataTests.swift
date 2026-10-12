@@ -4,7 +4,7 @@ import Testing
 
 // T-054a: 小组件数据层——快照编解码/原子写读容错/节流三元组/时间线外推/陈旧标注（A6·4 数据半场）
 
-@Suite struct WidgetDataTests {
+@Suite(.serialized) struct WidgetDataTests {
 
     // @unchecked Sendable 论证：仅单条测试内单线程使用，postedNames 的可变状态不跨线程
     private final class FakeNotifier: NotifierPostable, @unchecked Sendable {

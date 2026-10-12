@@ -3,7 +3,7 @@ import Combine
 
 // 菜单栏壳（A2·S3 初版）：订阅快照，状态不变不重绘；右键/点击菜单含退出
 @MainActor
-public final class StatusBarController {
+public final class StatusBarController: NSObject, NSMenuDelegate {
     private let store: SystemStatusStore
     private let settings: SettingsStore
     private let statusItem: NSStatusItem
@@ -12,6 +12,9 @@ public final class StatusBarController {
     private var lastRenderedInputs: (size: Double, dark: Bool)?
     private var lastFooter: SlotScene?
     private var lastGlow: Double??
+    private var onTogglePopover: ((NSStatusBarButton) -> Void)?
+    private var onOpenSettings: (() -> Void)?
+    private lazy var menu: NSMenu = buildMenu()
 
     public init(store: SystemStatusStore, settings: SettingsStore) {
         self.store = store
@@ -19,8 +22,38 @@ public final class StatusBarController {
         self.statusItem = NSStatusBar.system.statusItem(
             withLength: NSStatusItem.squareLength
         )
+        super.init()
         statusItem.button?.imagePosition = .imageOnly
-        buildMenu()
+        statusItem.menu = menu  // configure() 接管后改为左键弹层/右键菜单
+    }
+
+    /// 集成接线：左键 → 弹层；菜单"设置…" → 设置窗口（未接线时保持纯菜单行为）
+    public func configure(
+        popoverToggle: @escaping (NSStatusBarButton) -> Void,
+        openSettings: @escaping () -> Void
+    ) {
+        self.onTogglePopover = popoverToggle
+        self.onOpenSettings = openSettings
+        statusItem.menu = nil
+        guard let button = statusItem.button else { return }
+        button.target = self
+        button.action = #selector(statusBarClicked(_:))
+        button.sendAction(on: [.leftMouseDown, .rightMouseDown])
+    }
+
+    @objc private func statusBarClicked(_ sender: NSStatusBarButton) {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseDown {
+            menu.delegate = self
+            statusItem.menu = menu
+            sender.performClick(nil)
+        } else {
+            onTogglePopover?(sender)
+        }
+    }
+
+    public func menuDidClose(_ menu: NSMenu) {
+        statusItem.menu = nil  // 让回左键弹层通道
     }
 
     /// 订阅启动与渲染由组合根调度（避免 init 期触发链）
@@ -78,7 +111,11 @@ public final class StatusBarController {
         )
     }
 
-    private func buildMenu() {
+    @objc private func settingsClicked() {
+        onOpenSettings?()
+    }
+
+    private func buildMenu() -> NSMenu {
         let menu = NSMenu()
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
         let versionItem = NSMenuItem(
@@ -86,10 +123,15 @@ public final class StatusBarController {
         )
         versionItem.isEnabled = false
         menu.addItem(versionItem)
+        let settingsItem = NSMenuItem(
+            title: "设置…", action: #selector(settingsClicked), keyEquivalent: ","
+        )
+        settingsItem.target = self
+        menu.addItem(settingsItem)
         menu.addItem(.separator())
         menu.addItem(
             NSMenuItem(title: "退出状态管家", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         )
-        statusItem.menu = menu
+        return menu
     }
 }

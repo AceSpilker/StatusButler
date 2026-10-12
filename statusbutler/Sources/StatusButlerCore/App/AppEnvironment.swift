@@ -10,22 +10,42 @@ public final class AppEnvironment {
     private let appIconController: AppIconController
     private var placementCancellable: AnyCancellable?
     private let chargingEffectClock = ChargingEffectClock()
+    private let popoverController: StatusPopoverController
+    private let settingsWindowController: SettingsWindowController
+    private let onboardingWindowController: OnboardingWindowController
     private var chargingCancellables: Set<AnyCancellable> = []
 
     public init(
         store: SystemStatusStore,
         settings: SettingsStore,
         statusBarController: StatusBarController,
-        appIconController: AppIconController
+        appIconController: AppIconController,
+        popoverController: StatusPopoverController,
+        settingsWindowController: SettingsWindowController,
+        onboardingWindowController: OnboardingWindowController
     ) {
         self.store = store
         self.settings = settings
         self.statusBarController = statusBarController
         self.appIconController = appIconController
+        self.popoverController = popoverController
+        self.settingsWindowController = settingsWindowController
+        self.onboardingWindowController = onboardingWindowController
     }
 
     public func start() {
         statusBarController.startObserving()
+        statusBarController.configure(
+            popoverToggle: { [weak self] button in
+                self?.popoverController.toggle(anchorView: button)
+            },
+            openSettings: { [weak self] in
+                self?.settingsWindowController.showWindow(nil)
+            }
+        )
+        // 首启引导：看过就不再弹，完成即落盘
+        let hasSeen = UserDefaults.standard.bool(forKey: OnboardingWindowController.defaultsKey)
+        onboardingWindowController.showIfNeeded(hasSeenGuide: hasSeen)
         appIconController.start()
         chargingEffectClock.start(store: store, settings: settings)
         chargingEffectClock.$glow
@@ -63,9 +83,19 @@ public final class AppEnvironment {
         )
         let controller = StatusBarController(store: store, settings: settings)
         let appIconController = AppIconController(store: store, settings: settings)
+        let popover = StatusPopoverController(viewModel: PanelViewModel(store: store))
+        let settingsWindow = SettingsWindowController(settings: settings)
+        let onboarding = OnboardingWindowController(
+            localization: Localization(language: .system),
+            onFinish: {
+                UserDefaults.standard.set(true, forKey: OnboardingWindowController.defaultsKey)
+            }
+        )
         return AppEnvironment(
             store: store, settings: settings,
-            statusBarController: controller, appIconController: appIconController
+            statusBarController: controller, appIconController: appIconController,
+            popoverController: popover, settingsWindowController: settingsWindow,
+            onboardingWindowController: onboarding
         )
     }
 }
