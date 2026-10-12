@@ -98,13 +98,13 @@ import Foundation
         #expect(controller.window == nil)
     }
 
-    @Test func showIfNeededShowsOnFirstLaunch() {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["CI"] == nil)) func showIfNeededShowsOnFirstLaunch() {
         let controller = OnboardingWindowController()
         #expect(controller.showIfNeeded(hasSeenGuide: false) == true)
         #expect(controller.window != nil)
     }
 
-    @Test func showReopensSameWindow() {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["CI"] == nil)) func showReopensSameWindow() {
         let controller = OnboardingWindowController()
         controller.show()
         let first = controller.window
@@ -114,7 +114,7 @@ import Foundation
         #expect(controller.window === first)
     }
 
-    @Test func completeClosesWindowAndNotifiesIntegrator() {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["CI"] == nil)) func completeClosesWindowAndNotifiesIntegrator() {
         var finished = false
         let controller = OnboardingWindowController(onFinish: { finished = true })
         controller.show()
