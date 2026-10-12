@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: statusbutler
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 swiftly 工具链
+        run: |
+          brew install swiftly
+          swiftly init --assume-yes --no-modify-profile
+          echo "$HOME/.swiftly/bin" >> "$GITHUB_PATH"
+
+      - name: 构建
+        run: swift build
+
+      - name: 测试（Swift Testing）
+        run: swift test
+
+      - name: Release 构建 + 组包冒烟
+        run: bash scripts/build-app.sh release no-open
