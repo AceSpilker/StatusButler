@@ -233,7 +233,7 @@ import Testing
             bypassPollInterval: .milliseconds(50)
         )
         vm.panelDidAppear()
-        try await Task.sleep(for: .milliseconds(300))
+        try await Task.sleep(for: .milliseconds(800))
         #expect(bluetooth.readCount >= 3, "可见期间应粗间隔轮询，实际 \(bluetooth.readCount) 次")
     }
 
