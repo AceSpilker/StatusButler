@@ -14,3 +14,4 @@ dist/
 # Swift Package Manager
 .build/
 Package.resolved.orig
+.worktrees/

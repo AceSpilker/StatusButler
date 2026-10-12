@@ -53,12 +53,12 @@ public final class AppEnvironment {
     }
 
     public static func live() -> AppEnvironment {
-        // T-020+ 将替换为 IOKit/CoreWLAN/CoreAudio 真实现
         let settings = SettingsStore()
+        // T-020/T-021/T-022 落地：真监控器上场，图标数据从此来自真实系统状态
         let store = SystemStatusStore(
-            battery: StaticBatteryMonitor(.unavailable),
-            wifi: StaticWiFiMonitor(.offline),
-            volume: StaticVolumeMonitor(VolumeState(level: 0, isMuted: false)),
+            battery: BatteryMonitor(),
+            wifi: WiFiMonitor(),
+            volume: VolumeMonitor(),
             refreshInterval: .seconds(settings.refreshIntervalSeconds)
         )
         let controller = StatusBarController(store: store, settings: settings)
