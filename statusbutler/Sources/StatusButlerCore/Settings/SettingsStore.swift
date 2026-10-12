@@ -11,6 +11,7 @@ public final class SettingsStore: ObservableObject {
         static let iconSize = "menuBarIconSize"
         static let refreshIntervalSeconds = "statusRefreshIntervalSeconds"
         static let showsBatteryPercentage = "showsBatteryPercentage"
+        static let placement = "appIconPlacement"
     }
 
     private let defaults: UserDefaults
@@ -27,6 +28,10 @@ public final class SettingsStore: ObservableObject {
         didSet { defaults.set(showsBatteryPercentage, forKey: Key.showsBatteryPercentage) }
     }
 
+    @Published public var appIconPlacement: AppIconPlacement {
+        didSet { defaults.set(appIconPlacement.rawValue, forKey: Key.placement) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let storedSize = defaults.double(forKey: Key.iconSize)
@@ -37,5 +42,7 @@ public final class SettingsStore: ObservableObject {
             defaults.set(true, forKey: Key.showsBatteryPercentage)
         }
         showsBatteryPercentage = defaults.bool(forKey: Key.showsBatteryPercentage)
+        let raw = defaults.string(forKey: Key.placement)
+        appIconPlacement = AppIconPlacement(rawValue: raw ?? "") ?? .menuBarOnly
     }
 }

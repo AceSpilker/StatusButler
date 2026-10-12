@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 
 // 组合根：全部依赖在此手工装配（B1）；随任务推进逐步换入真实监控器
@@ -6,24 +7,37 @@ public final class AppEnvironment {
     private let store: SystemStatusStore
     private let settings: SettingsStore
     private let statusBarController: StatusBarController
+    private let appIconController: AppIconController
+    private var placementCancellable: AnyCancellable?
 
     public init(
         store: SystemStatusStore,
         settings: SettingsStore,
-        statusBarController: StatusBarController
+        statusBarController: StatusBarController,
+        appIconController: AppIconController
     ) {
         self.store = store
         self.settings = settings
         self.statusBarController = statusBarController
+        self.appIconController = appIconController
     }
 
     public func start() {
         statusBarController.startObserving()
+        appIconController.start()
+        placementCancellable = settings.$appIconPlacement
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] placement in
+                self?.statusBarController.setVisible(placement.showsMenuBarIcon)
+            }
         store.start()
     }
 
     public func stop() {
         store.stop()
+        appIconController.stop()
+        placementCancellable = nil
     }
 
     public static func live() -> AppEnvironment {
@@ -36,6 +50,10 @@ public final class AppEnvironment {
             refreshInterval: .seconds(settings.refreshIntervalSeconds)
         )
         let controller = StatusBarController(store: store, settings: settings)
-        return AppEnvironment(store: store, settings: settings, statusBarController: controller)
+        let appIconController = AppIconController(store: store, settings: settings)
+        return AppEnvironment(
+            store: store, settings: settings,
+            statusBarController: controller, appIconController: appIconController
+        )
     }
 }

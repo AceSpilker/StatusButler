@@ -22,6 +22,10 @@ public final class StatusBarController {
     }
 
     /// 订阅启动与渲染由组合根调度（避免 init 期触发链）
+    public func setVisible(_ visible: Bool) {
+        statusItem.isVisible = visible
+    }
+
     public func startObserving() {
         guard cancellables.isEmpty else { return }
         bind()

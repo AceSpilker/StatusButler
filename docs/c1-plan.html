@@ -101,7 +101,7 @@
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
     <tr><td>T-010</td><td>三合一图标渲染管线：120×120 几何 / 场景状态 / 墨水居中补偿 / 渲染缓存与合并刷新</td><td><a href="a2-features.html#s1" target="_parent">A2·S1</a></td><td>W2~W3</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-011</td><td>菜单栏 StatusBarController + 弹层壳（NSPopover 锚定/多屏）+ 右键菜单</td><td><a href="a2-features.html#s3" target="_parent">A2·S3</a></td><td>W3</td><td><span class="badge b-gray">已完成</span></td></tr>
-    <tr><td>T-012</td><td>Dock 渲染（同源场景状态）+ 激活策略切换 + Dock 点击行为</td><td><a href="a2-features.html#s2" target="_parent">A2·S2</a></td><td>W3~W4</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-012</td><td>Dock 渲染（同源场景状态）+ 激活策略切换 + Dock 点击行为</td><td><a href="a2-features.html#s2" target="_parent">A2·S2</a></td><td>W3~W4</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-013</td><td>充电动画时间线系统（相位/调色/帧缓存/减弱动态/睡眠停止）</td><td><a href="a2-features.html#s1" target="_parent">A2·S1</a></td><td>W4</td><td><span class="badge b-gray">未开始</span></td></tr>
     <tr><td>T-014</td><td>E1 信号槽系统：SlotSource 协议 + 注册表 + SlotScheduler + 9 内置源接线</td><td><a href="a8-slots-info.html" target="_parent">A8·SL</a></td><td>W4</td><td><span class="badge b-gray">未开始</span></td></tr>
   </table>
@@ -161,6 +161,7 @@
     <tr><td>T-003</td><td>2026-10-12</td><td>swift test：<strong>4 套件 10 用例全部通过</strong>（快照 4 / 设置 3 / Store 2 / 红线守卫 1）；AGENTS.md 落库</td><td>本提交</td></tr>
     <tr><td>T-010</td><td>2026-10-12</td><td>swift test 5 用例 ✓（映射 4 + 渲染冒烟 1：120×120 几何 → 2x 位图确定性输出，headless 环境稳定）；修复 lockFocus 无屏尺寸漂移 → 显式 NSBitmapImageRep</td><td>本提交</td></tr>
     <tr><td>T-011</td><td>2026-10-12</td><td>swift test 15 用例全绿；组合根接入 StatusBarController（快照订阅 + 三元组渲染缓存 key + 菜单壳）</td><td>本提交</td></tr>
+    <tr><td>T-012</td><td>2026-10-12</td><td>swift test 18 用例全绿（位置语义/策略映射/Dock 渲染冒烟/持久化）；附注：Dock 点击弹弹层行为随 T-030 弹层系统接入</td><td>本提交</td></tr>
   </table>
   <h3>行模板</h3>
   <pre>T-0XX | 2026-MM-DD | swift test（32 用例，32 通过/0 失败）+ 契约脚本 verify-xxx ✓ | <a>commit hash</a>

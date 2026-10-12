@@ -5,11 +5,11 @@ import AppKit
 public enum StatusIconRenderer {
     public static let canvasSize: CGFloat = 120
 
-    struct Palette {
+    public struct Palette {
         let ink: NSColor        // 主线条
         let accent: NSColor     // 充电绿
         let lowBattery: NSColor // 低电红
-        static func adaptive(dark: Bool) -> Palette {
+        public static func adaptive(dark: Bool) -> Palette {
             Palette(
                 ink: dark ? .white : .black,
                 accent: NSColor(calibratedRed: 0.16, green: 0.72, blue: 0.29, alpha: 1),
@@ -48,13 +48,18 @@ public enum StatusIconRenderer {
         if let ctx = nsContext?.cgContext {
             ctx.saveGState()
             ctx.scaleBy(x: scale, y: scale)
-            drawBattery(scene: scene, palette: palette, in: ctx)
-            drawSignal(scene: scene, palette: palette, in: ctx)
-            drawVolume(scene: scene, palette: palette, in: ctx)
+            drawSegments(scene: scene, palette: palette, in: ctx)
             ctx.restoreGState()
         }
         NSGraphicsContext.restoreGraphicsState()
         return image
+    }
+
+    /// 调用方负责坐标系缩放；Dock 渲染器复用同一套分段（B1 两端同源铁律）
+    static func drawSegments(scene: IconSceneState, palette: Palette, in ctx: CGContext) {
+        drawBattery(scene: scene, palette: palette, in: ctx)
+        drawSignal(scene: scene, palette: palette, in: ctx)
+        drawVolume(scene: scene, palette: palette, in: ctx)
     }
 
     // MARK: - 顶部：电池（胶囊 + 电量填充 + 充电闪电）
