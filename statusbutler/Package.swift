@@ -19,7 +19,7 @@ let package = Package(
             path: "Sources/StatusButler"
         ),
         .executableTarget(
-            name: "statusbutler",
+            name: "butler",
             dependencies: ["StatusButlerCore"],
             path: "Sources/statusbutler-cli"
         ),
