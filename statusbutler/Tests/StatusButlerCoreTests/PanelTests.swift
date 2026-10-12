@@ -151,6 +151,10 @@ import Testing
         var emissions: [StatusSnapshot] = []
         // @Published 订阅即回放当前值：dropFirst 排除回放的 .empty，只统计防抖后的真实下发
         let cancellable = vm.$displaySnapshot.dropFirst().sink { emissions.append($0) }
+        // 慢机兼容：等订阅期回放与 VM 初始赋值全部落定后再清零计数，
+        // 否则初始 .empty 可能在订阅后才到（CI 实测），多出一次下发
+        try await Task.sleep(for: .milliseconds(200))
+        emissions.removeAll()
 
         // 500ms 窗口内 3 次快照变更（11/22/33）→ 只应合并下发一次末值
         await store.refresh()

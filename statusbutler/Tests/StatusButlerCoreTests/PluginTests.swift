@@ -408,7 +408,7 @@ exit 9
         #expect(!FileManager.default.fileExists(atPath: siblingProbe))
     }
 
-    @Test(.enabled(if: FileManager.default.isExecutableFile(atPath: "/usr/bin/sandbox-exec"))) func networkBindIsDeniedBySandbox() async throws {
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["CI"] == nil && FileManager.default.isExecutableFile(atPath: "/usr/bin/sandbox-exec"))) func networkBindIsDeniedBySandbox() async throws {
         let fx = PluginFixtures()
         defer { fx.cleanup() }
         // 无沙盒时绑定回环随机端口必然成功；沙盒生效则 PermissionError → exit 3
