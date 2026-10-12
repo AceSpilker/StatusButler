@@ -151,8 +151,37 @@ import Testing
         #expect(workflow.contains("scripts/release-app.sh --no-publish"))
         #expect(workflow.contains("actions/upload-artifact@v4"))
         #expect(workflow.contains("if-no-files-found: error"))
-        // publish 保持注释 TODO：Developer ID Secrets 未配置前不得出现真发布步骤
-        #expect(workflow.contains("TODO(publish"))
-        #expect(workflow.contains("# - name: 发布 GitHub Release"))
+    }
+
+    // MARK: - release-draft publish 门控契约（T-056）
+
+    @Test func releaseDraftPublishGatingContractIsPinned() throws {
+        let workflow = try String(
+            contentsOf: repoRoot().appending(path: ".github/workflows/release-draft.yml"),
+            encoding: .utf8
+        )
+        // publish 必须是布尔输入且默认 false：tag push 永远只出草稿，正式链须手动显式勾选
+        #expect(workflow.contains("publish:"))
+        #expect(workflow.contains("type: boolean"))
+        #expect(workflow.contains("default: false"))
+        // 每个 publish 步骤都必须同时挂 workflow_dispatch + inputs.publish == true 双条件
+        // （签名公证 / appcast / release 三步，缺一即漏门）
+        let gatedConditions = workflow.components(
+            separatedBy: "github.event_name == 'workflow_dispatch' && inputs.publish == true"
+        ).count - 1
+        #expect(gatedConditions >= 3)
+        // 步骤名逐一标注"publish 门控"，评审一眼可辨哪些步骤进了正式链
+        #expect((workflow.components(separatedBy: "publish 门控").count - 1) >= gatedConditions)
+        // Secrets 缺失时回落 ad-hoc 并注明（::notice::），不得让草稿链硬失败
+        #expect(workflow.contains("secrets.DEVELOPER_ID_APPLICATION_P12"))
+        #expect(workflow.contains("::notice::未配置 DEVELOPER_ID_APPLICATION_P12"))
+        // 公证走 notarytool + staple（Developer ID 路线）
+        #expect(workflow.contains("notarytool submit"))
+        #expect(workflow.contains("stapler staple"))
+        // appcast：EdDSA key 从 secrets.SPARKLE_EDDSA_KEY，片段拼进 rss/channel 根元素
+        #expect(workflow.contains("secrets.SPARKLE_EDDSA_KEY"))
+        #expect(workflow.contains("gen-appcast-fragments.rb"))
+        #expect(workflow.contains("<rss version=\"2.0\""))
+        #expect(workflow.contains("</channel>"))
     }
 }

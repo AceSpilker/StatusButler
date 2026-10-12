@@ -1,14 +1,20 @@
-# T-056a（B1·发布链）：tag push (v*) 触发的发布草稿流水线。
+# T-056a/T-056（B1·发布链）：tag push (v*) 触发的发布草稿流水线。
 # 与 ci.yml 同源的验证门（swift test + release 组包），产物以 artifact 形态交付；
-# 真正的 GitHub Release 发布（Developer ID 签名/公证 + gh release）留待 Secrets 配置后
-# 以 manual workflow_dispatch 接入（见文件末尾 TODO 注释块）。
+# T-056 收尾起 publish 为布尔输入门控（默认 false）：tag push 永远只出 ad-hoc 草稿，
+# 正式签名/公证/appcast 必须人工 workflow_dispatch 并显式勾选 publish——
+# 且 Secrets 未配置时各步自动回落 ad-hoc/跳过并注明，不硬失败（模板待 Secrets 就绪后实测校准）。
 name: Release Draft
 
 on:
   push:
     tags: ['v*']
-  # 手动触发：Secrets 配置前用于发布链预检（不打 tag 也能全链路跑一遍）
+  # 手动触发：Secrets 配置前用于发布链预检（不打 tag 也能全链路跑一遍）；勾选 publish 走正式链
   workflow_dispatch:
+    inputs:
+      publish:
+        description: '正式发布（Developer ID 签名+公证+appcast；需 Secrets，缺失时自动回落 ad-hoc 并注明）'
+        type: boolean
+        default: false
 
 jobs:
   release-draft:
@@ -48,19 +54,88 @@ jobs:
             statusbutler/dist/*.sha256
           if-no-files-found: error
 
-      # TODO(publish, manual workflow_dispatch): Developer ID 签名/公证 Secrets
-      # （DEVELOPER_ID_APPLICATION_CERT / NOTARY_PROFILE 等）尚未配置，发布步骤暂缓。
-      # Secrets 就绪后解开本块并接入 release-app.sh 的 publish 模式：
-      # - name: 签名 + 公证（Developer ID）
-      #   if: github.event_name == 'workflow_dispatch'
-      #   run: |
-      #     security import ... (Secrets 注入钥匙串)
-      #     codesign --verify --deep --strict ...
-      #     xcrun notarytool submit dist/*.dmg --keychain-profile ... --wait
-      # - name: 发布 GitHub Release（草稿）
-      #   if: github.event_name == 'workflow_dispatch'
-      #   run: |
-      #     SPARKLE_EDDSA_KEY="${{ secrets.SPARKLE_EDDSA_KEY }}" \
-      #       ruby scripts/gen-appcast-fragments.rb > appcast-fragment.xml
-      #     gh release create "${GITHUB_REF_NAME}" dist/*.dmg dist/*.sha256 \
-      #       --draft --title "状态管家 ${GITHUB_REF_NAME}" --generate-notes
+      # ---- publish 门控段（T-056）：只在手动触发且显式勾选 publish 时进入 ----
+
+      - name: 签名 + 公证（publish 门控）
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        env:
+          # Developer ID p12（base64）与三把钥匙串口令；APP_STORE_CONNECT 组用于 notarytool keychain profile
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_APPLICATION_P12 }}
+          DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_APP_SPECIFIC_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          APP="dist/状态管家.app"
+          if [[ -z "$DEVELOPER_ID_P12" ]]; then
+            # 回落而非失败：草稿链任何时候都能跑通，正式链只认 Secrets
+            echo "::notice::未配置 DEVELOPER_ID_APPLICATION_P12——保持 ad-hoc 签名（非正式发布，跳过公证）"
+            exit 0
+          fi
+          # TODO(publish 校准): Secrets 就绪后实跑校准证书名/Profile 名（当前为模板）
+          printf '%s' "$DEVELOPER_ID_P12" | base64 --decode > /tmp/developer-id.p12
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security import /tmp/developer-id.p12 -k build.keychain -P "$DEVELOPER_ID_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" build.keychain >/dev/null
+          security list-keychain -d login -s login.keychain-db build.keychain
+          # DEVELOPER_DIR 无需切换（runner 单一 Xcode）；重签 app（--deep 覆盖 appex/内嵌框架）后重出 DMG
+          IDENTITY="Developer ID Application: $TEAM_ID"
+          /usr/bin/codesign --force --deep --options runtime --timestamp --sign "$IDENTITY" "$APP"
+          /usr/bin/codesign --verify --deep --strict "$APP"
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Support/Info.plist)"
+          DMG="dist/StatusButler-$VERSION.dmg"
+          rm -f "$DMG" "$DMG.sha256"
+          hdiutil create -quiet -volname "状态管家" -srcfolder "$APP" -format UDZO -ov "$DMG"
+          ( cd dist && shasum -a 256 -- "${DMG##*/}" > "${DMG##*/}.sha256" )
+          xcrun notarytool store-credentials StatusButler-notary --apple-id "$APPLE_ID" \
+            --password "$APPLE_ID_PASSWORD" --team-id "$TEAM_ID"
+          xcrun notarytool submit "$DMG" --keychain-profile StatusButler-notary --wait
+          xcrun stapler staple "$DMG"
+
+      - name: 组装 appcast.xml（publish 门控）
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        env:
+          # EdDSA 私钥由上游 sign_update 对 DMG 计算签名后注入（gen-appcast-fragments.rb 只读成品签名）
+          SPARKLE_EDDSA_KEY: ${{ secrets.SPARKLE_EDDSA_KEY }}
+          DMG_DOWNLOAD_URL: ${{ secrets.DMG_DOWNLOAD_URL }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SPARKLE_EDDSA_KEY" ]]; then
+            # 缺 key = 无法生成可信条目：gen-appcast-fragments.rb 缺 key 时本就拒绝出片，此处注明跳过
+            echo "::notice::未配置 SPARKLE_EDDSA_KEY——跳过 appcast 组装（宁缺勿假）"
+            exit 0
+          fi
+          mkdir -p dist/appcast
+          DMG_NAME="$(basename "$(ls dist/*.dmg | head -1)")"
+          URL="${DMG_DOWNLOAD_URL:-https://github.com/linzhongyang/mactool/releases/download/${GITHUB_REF_NAME}/$DMG_NAME}"
+          DMG_DOWNLOAD_URL="$URL" ruby scripts/gen-appcast-fragments.rb dist > dist/appcast/items.xml
+          # 片段拼进 appcast 根元素（rss/channel 骨架 + Sparkle 命名空间，Sparkle 2 最低形态）
+          {
+            echo '<?xml version="1.0" encoding="utf-8"?>'
+            echo '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">'
+            echo '  <channel>'
+            echo '    <title>状态管家 StatusButler</title>'
+            echo '    <link>https://statusbutler.invalid/appcast.xml</link>'
+            echo '    <description>Most recent changes with links to updates.</description>'
+            echo '    <language>zh-Hans</language>'
+            cat dist/appcast/items.xml
+            echo '  </channel>'
+            echo '</rss>'
+          } > dist/appcast/appcast.xml
+          cat dist/appcast/appcast.xml
+
+      - name: 发布 GitHub Release（草稿，publish 门控）
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${{ secrets.DEVELOPER_ID_APPLICATION_P12 }}" ]]; then
+            echo "::notice::Developer ID Secrets 未配置——跳过正式 Release（仅保留草稿产物）"
+            exit 0
+          fi
+          # TODO(publish 校准): tag 形态触发才进得到本步，GITHUB_REF_NAME 即 tag 名
+          gh release create "${GITHUB_REF_NAME}" dist/*.dmg dist/*.sha256 \
+            --draft --title "状态管家 ${GITHUB_REF_NAME}" --generate-notes
