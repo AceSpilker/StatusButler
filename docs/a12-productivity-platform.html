@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A12 · 效率与平台扩展设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A12 / Productivity &amp; Platform（E15~E19 / E22~E25 深度设计）</div>
+  <h1>效率与平台扩展：会议 · 脚本插件 · 体检等九项</h1>
+  <p class="lede">会议助手（E15/C3）· 脚本插件槽（E16/C4 战略级）· 网络质量测试（E17/C5）· 系统健康体检（E18/C6）· 磁盘监控（E19/C7）· 全局热键（E22/C9）· 昼夜自动主题（E23/C10）· 趣味槽位皮肤（E24/C11）· App 更新扫描（E25/C12）。</p>
+
+  <h2>一、E15 · 会议助手（MTG-01 ~ 03）</h2>
+  <div class="feat">
+    <h3>功能设计</h3>
+    <ul>
+      <li><strong>MTG-01 一键入会</strong>：E6 时间轴事件解析会议链接（zoom://、meet.google、teams、tencentmeeting:// 等规则表）→ 行内"加入"按钮直接拉起对应客户端/浏览器；无链接的事件只显示。</li>
+      <li><strong>MTG-02 会议中模式</strong>：到点提醒（提前 1/5 分钟可配）；加入会议后弹层顶部出现"会议条"——麦克风静音快捷（系统输入静音，公开 CoreAudio）、剩余时长、结束会议记录入 E10。</li>
+      <li><strong>MTG-03 隐私</strong>：沿用 CAL-03 保守策略，默认不显标题只显"会议中"；链接解析纯本地规则，不上传。</li>
+    </ul>
+  </div>
+
+  <h2>二、E16 · 脚本插件槽（SCR-PT，战略级平台能力）<span class="badge b-purple">C4 · 需安全设计</span></h2>
+  <div class="feat">
+    <h3>功能设计（SwiftBar 式，但接入槽位体系）</h3>
+    <ul>
+      <li><strong>SP-01 插件形态</strong>：用户放入 <code>~/Library/Application Support/StatusButler/plugins/</code> 一个可执行脚本（shell/swift/python），按约定的 JSON 行协议输出：符号、级别 0–4、主值、副值、刷新间隔建议——即成为一个 E1 槽位源 + 弹层分区。</li>
+      <li><strong>SP-02 安全沙盒</strong>（本功能生命线）：脚本以受限环境执行——独立进程、CPU/内存/运行时长配额（默认 2s 超时杀灭）、<strong>无网络、无家目录写、只读白名单参数</strong>（可配置放宽，每项显式授权）；插件损坏/超时连续 3 次自动停用并提示。</li>
+      <li><strong>SP-03 插件管理页</strong>：列表（名称/作者/刷新率/上次输出/健康状态）、启停、配额调整、导入导出（.butler-plugin 包 = 脚本 + manifest，主题商店同渠道分发）。</li>
+      <li><strong>SP-04 官方示例</strong>：内置 3 个示例插件（汇率、待办计数、Git 仓库状态）作为范式。</li>
+    </ul>
+  </div>
+
+  <h2>三、E17 · 网络质量测试（NETQ-01 ~ 02）</h2>
+  <ul>
+    <li>NETQ-01 弹层"测一下"：调用系统 <code>networkQuality</code> 能力（上下行/延迟/抖动/缓冲测试），结果页显示得分与历史对比（E10）；测试中明确提示会占用带宽。</li>
+    <li>NETQ-02 与 PF-01 关系：PF-01 是被动实时速率，NETQ 是主动诊断——诊断走系统网络栈，无自建服务器依赖。</li>
+  </ul>
+
+  <h2>四、E18 · 系统健康体检（HLTH-01 ~ 03）<span class="badge b-green">管家人设契合</span></h2>
+  <ul>
+    <li>HLTH-01 检查项（全公开 API/命令）：FileVault 是否开启、防火墙状态、Gatekeeper 状态、系统更新落后多少、Time Machine 最近备份时间、磁盘剩余空间、大版本系统新隐私特性提示。</li>
+    <li>HLTH-02 巡检报告：弹层分区 + A6 组件（"管家体检 92 分"）；每项带"去修复"深链对应系统设置；低于阈值项发通知（频率限制每周一次）。</li>
+    <li>HLTH-03 边界：只检测不代改（安全设置必须用户亲手改，这是原则不是技术限制）。</li>
+  </ul>
+
+  <h2>五、E19 · 磁盘活动监控（DSK-01 ~ 02）</h2>
+  <ul>
+    <li>DSK-01：磁盘 I/O 读写速率（公开 IOKit/统计接口）+ 各卷剩余空间与"低于 X GB 预警"；进 A7 性能面板第四张图 + E1 槽位源（磁盘剩余已有，此补 I/O）。</li>
+    <li>DSK-02：历史入 E10（小时聚合）。</li>
+  </ul>
+
+  <h2>六、E22 · 全局快捷键（HKEY-01 ~ 02）</h2>
+  <ul>
+    <li>HKEY-01：任意动作（弹层开关、静音、熄屏、全速应急、槽位切换、测速等）可绑全局热键；冲突检测（与系统/其他 App 抢键时提示）；录制式绑定 UI。</li>
+    <li>HKEY-02：默认不占用任何热键，全部用户自选（礼貌常驻）。</li>
+  </ul>
+
+  <h2>七、E23 · 昼夜自动主题（CRTH-01 ~ 02）</h2>
+  <ul>
+    <li>CRTH-01：主题（E7）可设"跟随系统外观"或"跟随日出日落"（位置复用 WX-01 城市），到点自动切换明暗两套主题；同步驱动 E14 显示器自动调光。</li>
+    <li>CRTH-02：切换带 3 秒预览回退（撤销窗口），防止误配。</li>
+  </ul>
+
+  <h2>八、E24 · 趣味槽位皮肤（SKIN-01）</h2>
+  <ul>
+    <li>RunCat 式动态槽位：CPU 负载驱动小动画帧率（跑猫/游鱼/齿轮），默认关；皮肤随主题商店分发，动效遵循"减弱动态效果"。</li>
+  </ul>
+
+  <h2>九、E25 · App 更新扫描（UPDT-01）</h2>
+  <ul>
+    <li>扫描 /Applications 与 ~/Applications 的 App 清单，比对 Homebrew cask 数据源（仅 https + 域名白名单 + IP 校验，同 WX-03 纪律）提示可更新项，"去更新"深链 Homebrew 或官网；纯提示不代装。</li>
+  </ul>
+
+  <div class="callout c-info">📌 <strong>扩展全集现状</strong>：E1~E12（A3+A5~A9）+ 本批 E13~E25（A11/A12）= <strong>25 个扩展全部深度设计完毕</strong>，与 A2 复刻基线共同构成全量范围。总索引见 <a href="a0-catalog.html" target="_parent">A0 功能总目录</a>。</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A7 · 性能监控设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px  0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A7 / Performance（E4 深度设计）</div>
+  <h1>性能监控：网速 / CPU / 内存 / GPU 实时监测</h1>
+  <p class="lede">状态管家的第 4 号扩展（E4）升级为深度设计：上下行网速、CPU 使用率（含大小核分组）、内存与压力、GPU 使用率的<strong>实时监控</strong>——图标槽位、弹层曲线、桌面小组件三端同屏。登记于 <a href="a4-register.html" target="_parent">A4 R-3</a>。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#f">1. 功能设计（PF-01 ~ PF-30）</a>
+    <a href="#tech">2. 技术方案与 API 矩阵</a>
+    <a href="#discipline">3. 采样纪律（能效红线）</a>
+    <a href="#gpu">4. GPU 监控的真实边界</a>
+    <a href="#risk">5. 风险与联动</a>
+  </div>
+
+  <h2 id="f">1. 功能设计（PF-01 ~ PF-30）</h2>
+
+  <div class="feat">
+    <h3>PF-01 网速实时监控 <span class="badge b-green">全机型</span></h3>
+    <ul>
+      <li><strong>上行/下行速率</strong>：实时 B/s—GB/s 自适应单位（1s 采样、5s 平滑可选），↕ 双行显示。</li>
+      <li><strong>按网卡分解</strong>：Wi-Fi / 以太网 / VPN 隧道（utun）分别计速并标注当前主用网卡（联动 S5 链路信息）；回环接口排除。</li>
+      <li><strong>累计流量</strong>：本次开机以来 / 今日 累计上下行量；联动 E10 落历史（按小时聚合存 30 天）。</li>
+      <li><strong>展示位</strong>：E1 图标槽位（↕ 简写速率）、弹层分区（双行大字 + 60 秒迷你走势）、A6 组件 WG-04。</li>
+    </ul>
+  </div>
+
+  <div class="feat">
+    <h3>PF-10 CPU 监控 <span class="badge b-green">全机型</span></h3>
+    <ul>
+      <li><strong>总使用率 + 每核心</strong>：逐核百分比（mach 处理器时钟 tick 差分），核心网格可一眼看出调度。</li>
+      <li><strong>Apple Silicon 大小核分组</strong>：P 核均值 / E 核均值分开展示（性能核忙还是能效核忙，语义完全不同）。</li>
+      <li><strong>负载均衡视图</strong>：1/5/15 分钟负载均值；60 秒实时曲线 + 10 分钟趋势（E10 缓冲）。</li>
+      <li><strong>耗资源进程榜</strong>：Top 5 CPU 进程（名称 + % + 图标），点击进程可选"深入查看该进程 CPU/内存曲线"（可关，默认关）。</li>
+    </ul>
+  </div>
+
+  <div class="feat">
+    <h3>PF-20 内存监控 <span class="badge b-green">全机型</span></h3>
+    <ul>
+      <li><strong>用量分解</strong>：已用 / 联动锁定（Wired）/ 压缩 / 可清理，与物理总量对比（统一内存架构下 CPU/GPU 共享，明确标注）。</li>
+      <li><strong>内存压力表</strong>：系统内存压力等级（正常/警告/紧急）三色仪表——比"剩余内存"更真实反映卡顿风险（公开 API：内存压力源）。</li>
+      <li><strong>Swap</strong>：交换区用量与换入换出速率；"开始使用 Swap"可提示（内存紧张的最早信号）。</li>
+      <li><strong>内存占用进程榜</strong>：Top 5 内存进程。<strong>明确不做"内存清理"类伪功能</strong>（红线：不杀进程不 purge）。</li>
+    </ul>
+  </div>
+
+  <div class="feat">
+    <h3>PF-30 GPU 监控 <span class="badge b-orange">尽力支持 · 见第 4 节</span></h3>
+    <ul>
+      <li><strong>GPU 使用率</strong>：百分比 + 60 秒曲线；Intel 独显/核显分卡显示；Apple Silicon 单卡。</li>
+      <li><strong>GPU 相关联展示</strong>：GPU 温度（A5）、显存情况（Intel 独显显存用量；Apple Silicon 统一内存不单列并说明原因）。</li>
+      <li><strong>回退链</strong>：使用率不可得的机型 → 显示 GPU 功耗（mW）作为活跃度代理，再不可得 → 仅显示 GPU 温度并说明。</li>
+    </ul>
+  </div>
+
+  <div class="feat">
+    <h3>PF-40 阈值与提醒（联动 E10）</h3>
+    <ul>
+      <li>CPU 持续 &gt; 90% 达 N 分钟、内存压力进入"警告"、Swap 首次启用 → 系统通知（全部默认关，按需开）。</li>
+      <li>所有指标写入 E10 历史；弹层各分区带"历史"标签可看长曲线。</li>
+    </ul>
+  </div>
+
+  <h2 id="tech">2. 技术方案与 API 矩阵</h2>
+  <table>
+    <tr><th>指标</th><th>API（全部公开/系统级）</th><th>权限</th><th>成本</th></tr>
+    <tr><td>CPU 总/逐核</td><td><code>host_processor_info</code>（HOST_CPU_LOAD_INFO，tick 差分）</td><td>无</td><td>极低（单次系统调用）</td></tr>
+    <tr><td>P/E 核分组（AS）</td><td>逐核数据 + <code>sysctl hw.perflevel*</code> 核心归属映射</td><td>无</td><td>极低</td></tr>
+    <tr><td>内存分解/压力</td><td><code>mach_vm_statistics64</code>、内存压力源（dispatch source）、<code>sysctl vm.swapusage</code>、<code>hw.memsize</code></td><td>无</td><td>极低</td></tr>
+    <tr><td>网速</td><td><code>sysctl NET_RT_IFLIST2</code>（各接口字节计数器差分 ÷ 采样间隔）</td><td>无</td><td>低</td></tr>
+    <tr><td>进程榜</td><td><code>libproc</code>（proc_listallpids + proc_pidinfo），App Store 之外的常规做法</td><td>无</td><td>中（2s 一次）</td></tr>
+    <tr><td>GPU 使用率</td><td>IOReport 通道（IOKit 报告体系）；Intel 独显另有帧缓冲计数器路线</td><td>无</td><td>中（见第 4 节边界）</td></tr>
+    <tr><td>GPU/绘制回退</td><td>GPU 功耗（IOReport 能量通道）作活跃度代理</td><td>无</td><td>低</td></tr>
+  </table>
+
+  <h2 id="discipline">3. 采样纪律（能效红线）</h2>
+  <ul>
+    <li><strong>按需采样</strong>：所有采样器仅在其数据"有人看"时运行——对应 E1 槽位被选中、弹层分区可见、A6 组件启用、E10 落盘周期（默认 30s 一次粗采样）四类消费者任一存在；全部不可见时<strong>零采样零开销</strong>（对齐 B1 能效纪律）。</li>
+    <li><strong>采样频率分档</strong>：可见 1s（走势）/ 落盘 30s（历史）/ 槽位最小显示粒度对齐（如网速 2s 更新已足够可读）。</li>
+    <li><strong>环形缓冲</strong>：60 秒 ×1s 明细 + 10 分钟 ×5s 趋势 + E10 长期聚合，内存占用恒定（KB 级）。</li>
+    <li>采样器实现为独立 actor，差分计算纯函数化（可全量单测：喂固定计数器序列断言速率）。</li>
+  </ul>
+
+  <h2 id="gpu">4. GPU 监控的真实边界（诚实设计）</h2>
+  <div class="callout c-warn">macOS <strong>没有公开的"GPU 使用率%"官方 API</strong>，各监测工具走的都是 IOKit 的 IOReport 报告体系（苹果自家工具同源）：
+  <ul style="margin-top:6px">
+    <li><strong>Apple Silicon</strong>：IOReport 的 GPU 利用率通道可读（非 root），数值语义接近"硬件活跃驻留比"，与任务管理器口径略有差异——UI 标注口径说明；</li>
+    <li><strong>Intel 核显/独显</strong>：IOReport 通道覆盖大部分机型，个别独显只有功耗通道——按回退链降级；</li>
+    <li>实现策略：机型能力探测（启动时探测可用通道并缓存结果）→ 能力矩阵决定显示什么；任何通道读取失败静默降级，绝不显示假数据。</li>
+  </ul></div>
+
+  <h2 id="risk">5. 风险与联动</h2>
+  <table>
+    <tr><th>风险</th><th>应对</th></tr>
+    <tr><td>IOReport 通道随系统版本调整</td><td>通道探测 + 版本矩阵测试；失败降级路径已内建</td></tr>
+    <tr><td>进程榜与杀毒/隐私软件的兼容观感</td><td>默认关、开启时说明用途；仅读取进程公开信息</td></tr>
+    <tr><td>高速采样被误用为常驻高耗</td><td>采样纪律代码化（无消费者即停）+ 能耗自检（App 自身 CPU 占用目标 &lt; 0.5%）</td></tr>
+  </table>
+  <p class="lede" style="margin-top:26px">→ 联动：E1 槽位（网速/CPU 槽）/ E10 历史 / <a href="a6-widgets.html" target="_parent">A6 组件 WG-04 性能卡</a> / <a href="a5-thermal.html" target="_parent">A5 温度（同屏温控面板）</a> / S5（主用网卡识别）；工程落位见 <a href="b1-tech.html" target="_parent">B1 监控层 SlotSource 系列</a>。</p>
+</div>
+</body>
+</html>

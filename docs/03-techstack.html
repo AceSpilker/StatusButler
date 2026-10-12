@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>03 · 技术栈 — Status Trio 深度分析</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#2f6fed;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:2px}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef4fe;border-color:#cdddfb;color:#274a7e}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">03 / Tech Stack</div>
+  <h1>技术栈：用什么写的，为什么</h1>
+  <p class="lede">一句话总结：Swift 6 + SwiftUI/AppKit 混合 UI 的 Swift Package 项目，仅一个运行时三方依赖（Sparkle），其余全部压在 macOS 系统框架上；另有两条"重资产"支线——DDC 私有 API 与自编译 libimobiledevice。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#lang">语言与工具链</a>
+    <a href="#pkg">包结构（SPM targets）</a>
+    <a href="#ui">UI 框架策略：SwiftUI + AppKit 混合</a>
+    <a href="#fw">系统框架全景（按用途）</a>
+    <a href="#deps">第三方依赖</a>
+    <a href="#helper">两条重资产支线</a>
+    <a href="#build">构建 / CI / 发布链</a>
+    <a href="#test">测试体系</a>
+    <a href="#choice">对复刻项目的技术选型建议</a>
+  </div>
+
+  <h2 id="lang">语言与工具链</h2>
+  <table>
+    <tr><th style="width:180px">项</th><th>要求</th><th>备注</th></tr>
+    <tr><td>语言</td><td>Swift 6（严格并发）</td><td>大量 <code>@MainActor</code> 隔离、<code>nonisolated(unsafe)</code> 仅用于 teardown 场景；AGENTS.md 记录了多条绕开编译器 bug 的军规</td></tr>
+    <tr><td>CI 工具链</td><td>macOS 26 runner · Xcode 26.6 · Swift 6.3.3</td><td>AGENTS.md 称之为"最高优先级：本地新工具链不算数，CI 通过才算"</td></tr>
+    <tr><td>SDK</td><td>macOS 26 SDK 起步</td><td>系统按 <code>LC_BUILD_VERSION</code> 的 sdk 字段决定 App 是否采用新设计语言；旧 SDK 构建会<strong>静默</strong>产出旧版弹层外观（issue #40），构建脚本会直接失败拦截</td></tr>
+    <tr><td>部署目标</td><td>macOS 13（Ventura）</td><td>Universal 二进制（arm64 + x86_64）；Ventura 真机验证标记 pending，有专门兼容性文档与契约测试</td></tr>
+    <tr><td>包管理</td><td>Swift Package Manager</td><td><code>swift-tools-version:6.0</code>；无 CocoaPods / Carthage</td></tr>
+  </table>
+
+  <h2 id="pkg">包结构（SPM targets）</h2>
+  <pre>Package.swift
+├── StatusTrio          (executable)  入口：main.swift → NSApplication → AppDelegate
+├── StatusTrioCore      (library)     全部业务：监控/状态/渲染/UI/设置/本地化/遥测
+│   └── Resources/                    12 个 .lproj（Localizable.strings + InfoPlist.strings）
+├── DDCPrivateAPI       (C target)    IOAVService I2C 读写声明（DDC 显示器控制）
+└── StatusTrioCoreTests (test)        231 个测试文件</pre>
+  <p>App 不是 Xcode 工程而是<strong>纯 SPM 包</strong>，用脚本 <code>scripts/build-app.sh</code> 组装 <code>.app</code> bundle（Info.plist 在 <code>Support/</code>），本地 <code>swift run StatusTrio</code> 即可跑。</p>
+
+  <h2 id="ui">UI 框架策略：SwiftUI + AppKit 混合</h2>
+  <p>统计全部 import：SwiftUI 54 处、AppKit 55 处——两者几乎对半，分工明确：</p>
+  <table>
+    <tr><th>层</th><th>框架</th><th>典型职责</th></tr>
+    <tr><td>菜单栏 / 状态项</td><td>AppKit</td><td><code>NSStatusItem</code>、自绘 <code>NSImage</code>、<code>NSPopover</code> 锚定、右键菜单、激活策略切换、Dock 图标</td></tr>
+    <tr><td>弹层 / 设置内容</td><td>SwiftUI</td><td><code>StatusPopoverView</code>、设置中心各 Section、引导页、设备列表行</td></tr>
+    <tr><td>图标渲染</td><td>CoreGraphics（AppKit 内）</td><td>120×120 几何坐标系手绘环形/符号/点位，非 SwiftUI 绘制（性能与像素控制）</td></tr>
+    <tr><td>动画</td><td>QuartzCore + 自研时钟</td><td>充电动画走 <code>ChargingEffectClock</code>（时间线/相位/帧缓存），菜单栏侧用 layer presenter</td></tr>
+  </table>
+  <div class="callout c-info">这种"AppKit 管壳（状态栏/弹层/生命周期），SwiftUI 管内容"的混合是 macOS 菜单栏工具的主流成熟做法——<code>NSStatusItem</code> 与新弹层玻璃效果在纯 SwiftUI 里都拿不到完整控制权。</div>
+
+  <h2 id="fw">系统框架全景（按用途）</h2>
+  <table>
+    <tr><th>框架</th><th>用途</th><th>对应功能</th></tr>
+    <tr><td><code>IOKit</code></td><td>电源描述、DDC I2C</td><td>电池百分比/充电/循环次数；外接显示器音量</td></tr>
+    <tr><td><code>CoreWLAN</code></td><td>Wi-Fi 接口</td><td>SSID、信号、频段、扫描附近网络、开关 Wi-Fi</td></tr>
+    <tr><td><code>Network</code>（NWPathMonitor）</td><td>网络路径</td><td>有无互联网、受限网络（Low Data Mode）</td></tr>
+    <tr><td><code>SystemConfiguration</code></td><td>网络服务/链路</td><td>VPN 探测、以太网链路、主链路 IP 配置</td></tr>
+    <tr><td><code>CoreAudio</code> / <code>AudioToolbox</code></td><td>音频子系统</td><td>音量/静音/默认输出输入设备、设备图标、CoreAudio 属性监听推送</td></tr>
+    <tr><td><code>IOBluetooth</code></td><td>经典蓝牙</td><td>配对设备列表、连接/断开、配对报告电量、连接事件</td></tr>
+    <tr><td><code>CoreBluetooth</code></td><td>BLE</td><td>附近设备电量广播扫描（GATT Battery Service 解析）</td></tr>
+    <tr><td><code>CoreLocation</code></td><td>SSID 访问授权</td><td>macOS 用定位权限管控 Wi-Fi 名称读取（仅按需申请）</td></tr>
+    <tr><td><code>ServiceManagement</code></td><td>登录项</td><td>开机自启动（现代 LoginItem API）</td></tr>
+    <tr><td><code>Security</code> / <code>CryptoKit</code></td><td>签名/哈希</td><td>Sparkle EdDSA 更新校验、发布校验和</td></tr>
+    <tr><td><code>CoreDisplay</code></td><td>显示器服务</td><td>DDC 传输的显示器服务句柄</td></tr>
+    <tr><td><code>AppKit</code> / <code>SwiftUI</code></td><td>UI 壳与内容</td><td>状态栏、弹层、设置、引导</td></tr>
+    <tr><td><code>QuartzCore</code> / <code>CoreGraphics</code> / <code>CoreText</code></td><td>绘制与文字度量</td><td>图标渲染、动画层、符号墨水测量</td></tr>
+    <tr><td><code>os</code> / <code>OSLog</code> / <code>notify</code></td><td>日志与系统通知</td><td>统一日志、电源/显示事件订阅</td></tr>
+  </table>
+
+  <h2 id="deps">第三方依赖</h2>
+  <table>
+    <tr><th>依赖</th><th>版本</th><th>类型</th><th>用途</th></tr>
+    <tr><td><strong>Sparkle 2</strong></td><td>≥ 2.0</td><td>SPM 运行时依赖（<strong>唯一</strong>）</td><td>自动更新：EdDSA 签名 appcast、增量更新、自定义降级驱动</td></tr>
+    <tr><td>openssl 3.5.9</td><td>锁定 commit</td><td>源码静态编译</td><td>libimobiledevice 栈的 TLS 底座</td></tr>
+    <tr><td>libplist 2.8.0</td><td>锁定 commit</td><td>源码静态编译</td><td>plist 解析</td></tr>
+    <tr><td>libimobiledevice-glue 1.3.2</td><td>锁定 commit</td><td>源码静态编译</td><td>公共胶水层</td></tr>
+    <tr><td>libusbmuxd 2.1.1</td><td>锁定 commit</td><td>源码静态编译</td><td>USB 多路复用守护通信</td></tr>
+    <tr><td>libtatsu 1.0.5</td><td>锁定 commit</td><td>源码静态编译</td><td>Apple 设备信任协商</td></tr>
+    <tr><td>libimobiledevice 1.4.0</td><td>锁定 commit</td><td>源码静态编译</td><td>iDevice 协议：读取 iPhone/iPad/Watch 电量</td></tr>
+  </table>
+  <p>libimobiledevice 全家桶不进 SPM 依赖图，而是由 <code>scripts/build-mobile-battery-helper.sh</code> 按 <code>Support/mobile-battery-dependencies.json</code> 锁定的 commit 逐一 clone、构建为独立 Helper（依赖最小 macOS 13.0、可 Universal），主 App 通过 <code>MobileBatteryHelperReader</code> 读取其输出。许可证合规（Apache-2.0 + LGPL-2.1）记录在 manifest 中。</p>
+
+  <h2 id="helper">两条重资产支线（技术风险点）</h2>
+  <h3>① DDC / CI 显示器控制 <span class="badge b-red">私有 API</span></h3>
+  <p><code>DDCPrivateAPI</code> 是一个 C 头文件 target，声明了 IOKit 中未公开的三个符号：</p>
+  <pre>extern IOAVService IOAVServiceCreateWithService(...);
+extern IOReturn IOAVServiceReadI2C(...);   // 读显示器 DDC 寄存器
+extern IOReturn IOAVServiceWriteI2C(...);  // 写显示器 DDC 寄存器</pre>
+  <p>用于直接控制外接显示器的硬件音量。风险：私有符号随时可能在系统版本中变化；不同显示器 DDC 实现参差（项目用 <code>DDCVolumeReply</code> 处理回复时序）。</p>
+  <h3>② libimobiledevice Helper <span class="badge b-purple">第三方协议</span></h3>
+  <p>绕开 Apple 官方接口、直接说 usbmuxd 协议读 USB 设备。风险：协议随 iOS 版本演进（依赖锁定 commit，升级需重验）；构建链路长（6 个库按序构建 + RPATH/依赖检查脚本）。</p>
+  <div class="callout c-warn">复刻决策参考：这两条支线是 Status Trio 的差异化卖点，但都是"非公开契约"。若复刻项目要上 Mac App Store，DDC 私有 API 与未沙盒的 Helper 都不可行；走 Developer ID 自分发则可行但需自担维护成本。</div>
+
+  <h2 id="build">构建 / CI / 发布链</h2>
+  <pre>push tag v* 或手动 dispatch
+      │
+      ▼
+.github/workflows/release.yml   (runner: macos-26 / Xcode 26.6)
+      ├─ swift test + swift build -c release
+      ├─ 校验 SDK ≥ 26（verify-platform-version.sh）
+      ├─ 构建 mobile-battery helper（依赖 manifest 锁定）
+      ├─ 组装 .app → Developer ID 签名 → Apple 公证（Secrets 存在时）
+      │        └─ 缺 Secrets 时回退 Ad-hoc 签名
+      ├─ 打 DMG + 生成 SHA-256 校验和
+      ├─ release-notes/&lt;ver&gt;/{en,zh-Hans,…}.md → 组合 GitHub Release 正文
+      ├─ update-appcast.rb 生成 12 语言 appcast 条目（EdDSA 签名）
+      └─ 上传 Release + 发布 appcast.xml
+      辅助：scripts/validate-appcast-notes.sh（语言覆盖率校验）
+            scripts/test-macos13-*.sh（部署目标契约测试 ×4）
+            scripts/snapshot-analytics.py（每日指标快照 → analytics/）</pre>
+  <p>关键工程决策：</p>
+  <ul>
+    <li><strong>CI 即验收环境</strong>：AGENTS.md 规定任何触碰 actor 隔离 / SwiftUI 绑定 / Bundle.module 的改动，合并前必须跑一次不发布的 release workflow 预检；</li>
+    <li><strong>失败即记录</strong>：每次 CI 失败必须登记进 <code>docs/swift-ci-compatibility.md</code>（run ID、根因、修复、验证）——相当于公开的事故账本；</li>
+    <li>27 个脚本几乎都是"契约测试"：SDK 版本、Sparkle 元数据、appcast 最低系统版本、helper 的 RPATH 与依赖完整性等，把"容易静默坏掉的东西"变成可执行断言。</li>
+  </ul>
+
+  <h2 id="test">测试体系</h2>
+  <table>
+    <tr><th>测试类型</th><th>做法</th><th>例子</th></tr>
+    <tr><td>单元 / 逻辑</td><td>标准 XCTest，监控器全部协议化可注入假实现</td><td><code>BatteryMonitorTests</code>、<code>MobileBatteryControllerTests</code></td></tr>
+    <tr><td>像素回归</td><td>离屏渲染结果取指纹（哈希）比对</td><td><code>ChargingEffectRenderingTests</code>、<code>DockIconRendererPixelLengthTests</code></td></tr>
+    <tr><td>几何回归</td><td>断言渲染"墨水"落在几何中心线上</td><td><code>Issue30WiFiAlignmentTests</code>（Wi-Fi 符号水平居中，两条互补回归不许删）</td></tr>
+    <tr><td>本地化一致性</td><td>12 语言键集合必须对齐</td><td><code>LocalizationParityTests</code></td></tr>
+    <tr><td>行为矩阵</td><td>文档化矩阵转成参数化测试</td><td><code>PresentationStateBehaviorMatrixTests</code></td></tr>
+    <tr><td>守卫测试</td><td>扫描源码禁止出现危险模式</td><td><code>ForbiddenPatternGuardTests</code> + <code>check-forbidden-patterns.sh</code></td></tr>
+  </table>
+
+  <h2 id="choice">对复刻项目的技术选型建议</h2>
+  <table>
+    <tr><th>决策点</th><th>Status Trio 的选择</th><th>复刻建议</th></tr>
+    <tr><td>UI 框架</td><td>AppKit 壳 + SwiftUI 内容 + CoreGraphics 自绘图标</td><td>✔ 直接沿用（菜单栏工具的事实标准）</td></tr>
+    <tr><td>包管理</td><td>纯 SPM + 脚本组装 bundle</td><td>✔ 沿用；也可用 Xcode 工程降低构建脚本心智负担</td></tr>
+    <tr><td>最低系统</td><td>macOS 13</td><td>✔ 可保守沿用；若不需要 Ventura 可提至 14+ 减少兼容分支</td></tr>
+    <tr><td>更新</td><td>Sparkle 2 + EdDSA appcast</td><td>✔ 自分发必选；若只发 GitHub Releases 可先手动</td></tr>
+    <tr><td>图标绘制</td><td>CoreGraphics 手绘 + SF Symbols + 缓存</td><td>✔ 值得照抄管线；注意符号墨水居中补偿这个坑</td></tr>
+    <tr><td>DDC 音量</td><td>私有 IOAVService I2C</td><td>△ P3 可选；封装成独立模块随时可摘除</td></tr>
+    <tr><td>iDevice 电量</td><td>libimobiledevice 全家桶 Helper</td><td>△ P3 可选；或直接调系统已装的 <code>idevicediagnostics</code>（若有）降低自编译成本</td></tr>
+    <tr><td>遥测</td><td>自建匿名心跳（默认关）</td><td>○ 初期可不做，或用产品分析 SaaS 的无 ID 模式</td></tr>
+    <tr><td>并发模型</td><td>Swift 6 严格并发，Store 全 <code>@MainActor</code></td><td>✔ 沿用；严格并发虽上手痛但对菜单栏 App 的状态一致性收益大</td></tr>
+  </table>
+  <p class="lede" style="margin-top:26px">→ 下一页 <a href="04-architecture.html" target="_parent">04 架构与数据流</a>：这些技术如何组织成 4 万行可维护代码。</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A1 · 品牌与命名 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:2px}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .namecard{border:2px solid var(--brand);border-radius:16px;padding:26px 30px;margin:20px 0;background:linear-gradient(135deg,#f2faf8,#eef4fb)}
+  .namecard .zh{font-size:40px;font-weight:800;letter-spacing:6px}
+  .namecard .en{font-size:19px;color:var(--sub);margin-top:2px;font-weight:600}
+  .namecard .slogan{margin-top:10px;font-size:15px;color:#1c5a50;font-weight:600}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A1 / Brand &amp; Naming</div>
+  <h1>品牌与命名</h1>
+  <p class="lede">状态管家（StatusButler）的命名定案与品牌要素。2026-10-12 经两轮候选（第 1 轮"一览 OneGlance"辨识度不足，第 2 轮抽象组淘汰）后选定，全套文档已按此名更新。</p>
+
+  <h2>选定名称</h2>
+  <div class="namecard">
+    <div class="zh">状态管家</div>
+    <div class="en">StatusButler</div>
+    <div class="slogan">大小状态，管家打理 —— Every signal, at your service.</div>
+  </div>
+
+  <h2>命名理由</h2>
+  <ul>
+    <li><strong>功能零解释成本</strong>：管家=替主人照看一切的人，App=替用户盯住一切系统状态（Wi-Fi、电池、音量、蓝牙、外设……），第一次听到名字就大概知道它是干嘛的。</li>
+    <li><strong>人设自带温度</strong>：不是冷冰冰的仪表，而是一个"随叫随到、事事上心"的角色，弹层即"管家递上的报告单"，为产品文案与吉祥物形象（燕尾服 + 领结）提供持续灵感。</li>
+    <li><strong>容纳工具箱扩展</strong>：后续加的任何模块（天气、日程、性能监控……）都是"管家新学会的活儿"，名字永远不设限。</li>
+    <li><strong>中英双轨成立</strong>：中文"状态管家"四字直白好记；英文 Butler 一词自带"at your service"的经典服务语，品牌语天然成立；软件领域重名冲突低。</li>
+    <li><strong>与参考项目彻底区隔</strong>：不沿用 Status Trio 的任何命名与视觉。</li>
+  </ul>
+
+  <h2>命名历程（存档）</h2>
+  <table>
+    <tr><th style="width:190px">名称</th><th>为什么一听就懂</th><th style="width:100px">冲突情况</th></tr>
+    <tr><td><strong>满格 · FullBars</strong></td><td>天天说的口语："信号满格、电量满格"；产品图标正是格子化显示状态，吉利又准确</td><td>极低</td></tr>
+    <tr><td><strong>状态管家 · StatusButler</strong></td><td>管家帮你盯着家里一切——App 帮你盯着系统一切状态，功能秒懂</td><td>低</td></tr>
+    <tr><td><strong>驾驶舱 · Cockpit</strong></td><td>飞行员坐一位置看全部仪表——具体画面：一个图标看全部状态</td><td>中（Linux 管理面板同名）</td></tr>
+    <tr><td><strong>状态蜂巢 · StatusHive</strong></td><td>蜂窝=一个个六边格子拼成一体，正像多信号格拼成一个图标</td><td>低</td></tr>
+    <tr><td><strong>三格 · TriBars</strong></td><td>直接描述产品形态：图标就是上中下三段格子</td><td>极低</td></tr>
+    <tr><td><strong>状态站 · StatusStation</strong></td><td>车站信息屏=最日常的"状态显示牌"，人人见过</td><td>低</td></tr>
+    <tr><td><strong>万用表 · Multimeter</strong></td><td>电工的万用表：一块表测所有参数；"万用"还呼应工具箱扩展</td><td>低</td></tr>
+    <tr><td><strong>信号塔 · SignalTower</strong></td><td>通信铁塔：信号的源头，形象硬朗，logo 好画</td><td>低</td></tr>
+    <tr><td><strong>变色龙 · Chameleon</strong></td><td>随状态变色的小动物——图标正是用颜色报状态，形象可爱</td><td>中低</td></tr>
+  </table>
+  <p class="lede">✅ 最终选定 <strong>状态管家 StatusButler</strong>（2026-10-12）。上表为第 2 轮候选存档；第 1 轮（一览 OneGlance）因辨识度不足淘汰，第 2 轮抽象组（三极管/六分仪/图腾等）因过于抽象淘汰。</p>
+
+  <h2>品牌要素</h2>
+  <table>
+    <tr><th style="width:150px">要素</th><th>内容</th></tr>
+    <tr><td>中文名</td><td>状态管家</td></tr>
+    <tr><td>英文名</td><td>StatusButler</td></tr>
+    <tr><td>口号（中文）</td><td>大小状态，管家打理</td></tr>
+    <tr><td>口号（英文）</td><td>Every signal, at your service.</td></tr>
+    <tr><td>Bundle Identifier</td><td><code>com.linzhongyang.statusbutler</code>（单实例锁、登录项、设置迁移均按它绑定，不再变更）</td></tr>
+    <tr><td>仓库名</td><td><code>statusbutler</code>（放 <code>mactool/statusbutler/</code>）</td></tr>
+    <tr><td>主色</td><td>管家蓝 <code>#1F3A5F</code>（燕尾服深蓝，与参考项目的亮蓝区分）+ 铜金点缀 <code>#C8963E</code>（管家纽扣/怀表链）；暗色界面用 <code>#5B82B1</code> 提亮</td></tr>
+    <tr><td>图标概念</td><td>圆角徽章底（管家蓝），上中下三段信号格（A2 规格的三合一几何），底部中央一枚小领结作管家印记；Dock 大图标可加怀表指针元素。吉祥物形象：燕尾服 + 领结 + 单片眼镜的猫/熊，用于引导页与官网</td></tr>
+    <tr><td>语言策略</td><td>首发 简体中文 + English，字符串全部外置（.lproj / Localizable.strings），结构上支持任意语言扩充（参考项目 12 语言的组织方式可复用）</td></tr>
+    <tr><td>分发定位</td><td>开源或免费自用起步，GitHub Releases + DMG 分发；Developer ID 签名与公证在需要时办理（见 <a href="07-devtools.html" target="_parent">07 开发工具清单</a>）</td></tr>
+  </table>
+
+  <div class="callout c-info">📌 全套文档已定名更新：A2 规格文案、A3 扩展（URL Scheme <code>butler://</code>、主题文件 <code>.butler-theme</code>、CLI <code>statusbutler</code>）、B1 技术方案（仓库 <code>statusbutler/</code>、模块 <code>StatusButlerCore</code>）、文档中心标题与导航。对外发布前再核对一次商标与重名即可。</div>
+</div>
+</body>
+</html>

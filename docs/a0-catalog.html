@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A0 · 功能总目录 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:920px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  p{margin:10px 0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.4px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .go{display:inline-block;background:#eef6f4;border:1px solid #c6e2dc;color:#1c5a50;border-radius:8px;padding:1px 10px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap}
+  .go:hover{background:#dceee9}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:18px 0}
+  .quick a{display:block;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--soft);text-decoration:none;color:var(--ink)}
+  .quick a:hover{border-color:#b9dfd8;background:#eef6f4}
+  .quick b{display:block;font-size:14px}
+  .quick span{font-size:12px;color:var(--sub)}
+  .cat{display:flex;align-items:baseline;gap:10px}
+  .cat .cnt{font-size:12px;color:var(--sub);font-weight:400}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A0 / Master Catalog</div>
+  <h1>功能总目录：按功能类型分类</h1>
+  <p class="lede">状态管家全部功能点按<strong>十大功能类型</strong>整合（不再按文档来源分散排列）——复刻基线与扩展功能已融为一体，每行直达对应设计文档的具体章节。当前共 <strong>12 个复刻域 + 25 个扩展</strong>。</p>
+
+  <h2>🗺 十大类型速览</h2>
+  <table>
+    <tr><td><a href="#c1">① 状态图标与展示</a></td><td><a href="#c2">② 个性化与设置</a></td><td><a href="#c3">③ 硬件监控</a></td><td><a href="#c4">④ 电池与电源</a></td><td><a href="#c5">⑤ 网络与连接</a></td></tr>
+    <tr><td><a href="#c6">⑥ 音频与显示</a></td><td><a href="#c7">⑦ 控制与自动化</a></td><td><a href="#c8">⑧ 信息与效率</a></td><td><a href="#c9">⑨ 健康与维护</a></td><td><a href="#c10">⑩ 平台基础与工程</a></td></tr>
+  </table>
+
+  <h2 id="c1" class="cat">① 状态图标与展示 <span class="cnt">图标本体 · 三个展示端</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>三合一状态图标</strong></td><td>自绘三段图标（电池/网络/音量）· 蓝牙音频图标替换与变蓝 · 充电动画 · 墨水居中与渲染缓存</td><td><a class="go" href="a2-features.html#s1">A2·S1</a></td></tr>
+    <tr><td><strong>菜单栏 / Dock / 双开</strong></td><td>三种位置模式 · Dock 背景样式 · 两端像素一致铁律</td><td><a class="go" href="a2-features.html#s2">A2·S2</a></td></tr>
+    <tr><td><strong>模块化信号槽 E1</strong></td><td>槽位可插拔（9 内置源：时钟/网速/CPU/温度/天气…）· 固定/轮换/点击切换 · 槽位协议与调度纪律</td><td><a class="go" href="a8-slots-info.html">A8·SL</a></td></tr>
+    <tr><td><strong>弹层面板</strong></td><td>分区显隐与排序 · 下钻页 · 滚动调音量 · 可见才加载的能效纪律</td><td><a class="go" href="a2-features.html#s3">A2·S3</a></td></tr>
+    <tr><td><strong>桌面小组件 E12</strong></td><td>六族组件（总览/温度/风扇/性能/日程/天气）· 组件内交互控制 · 快照共享与刷新节流</td><td><a class="go" href="a6-widgets.html">A6·WG</a></td></tr>
+    <tr><td><strong>趣味槽位皮肤 E24</strong></td><td>CPU 负载驱动小动画（默认关，主题商店分发）</td><td><a class="go" href="a12-productivity-platform.html">A12·E24</a></td></tr>
+  </table>
+
+  <h2 id="c2" class="cat">② 个性化与设置 <span class="cnt">外观 · 主题 · 同步</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>设置中心</strong></td><td>九大分区 60+ 项配置 · 实时预览 · 跨版本迁移</td><td><a class="go" href="a2-features.html#s9">A2·S9</a></td></tr>
+    <tr><td><strong>图标主题系统 E7</strong></td><td><code>.butler-theme</code> 导入导出 · 6 套内置预设 · 分享</td><td><a class="go" href="a9-control-personalize.html">A9·TH</a></td></tr>
+    <tr><td><strong>昼夜自动主题 E23</strong></td><td>跟随系统外观/日出日落自动切换明暗主题 · 联动显示器调光</td><td><a class="go" href="a12-productivity-platform.html">A12·E23</a></td></tr>
+    <tr><td><strong>iCloud 设置同步 E8</strong></td><td>设置与主题多 Mac 同步（CloudKit 私有库 · 默认关）</td><td><a class="go" href="a9-control-personalize.html">A9·IC</a></td></tr>
+  </table>
+
+  <h2 id="c3" class="cat">③ 硬件监控 <span class="cnt">温度 · 性能 · 外设</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>温度与风扇 E11</strong></td><td>全传感器温度（CPU/GPU/电池/存储…）· 风扇三模式控制与曲线编辑器 · 特权 Helper · 安全护栏五条</td><td><a class="go" href="a5-thermal.html">A5·TF</a></td></tr>
+    <tr><td><strong>性能监控 E4</strong></td><td>实时网速（按网卡分解）· CPU（逐核+大小核+进程榜）· 内存（压力表/Swap）· GPU（回退链）</td><td><a class="go" href="a7-perf.html">A7·PF</a></td></tr>
+    <tr><td><strong>磁盘监控 E19</strong></td><td>磁盘 I/O 速率 + 空间预警（性能面板第四张图）</td><td><a class="go" href="a12-productivity-platform.html">A12·E19</a></td></tr>
+    <tr><td><strong>蓝牙设备面板</strong></td><td>配对设备管理 · 点击连接/断开（HID 确认）· 多源电量（AirPods 分体）· 附近 BLE 扫描</td><td><a class="go" href="a2-features.html#s7">A2·S7</a></td></tr>
+    <tr><td><strong>Apple 设备电池</strong></td><td>USB 连接的 iPhone/iPad/Watch 电量（libimobiledevice Helper）</td><td><a class="go" href="a2-features.html#s8">A2·S8</a></td></tr>
+  </table>
+
+  <h2 id="c4" class="cat">④ 电池与电源 <span class="cnt">监测 · 养护 · 熄屏</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>电池状态与详情</strong></td><td>百分比/充电/低电模式 · 详情页（功率/电压/电流/循环/健康）</td><td><a class="go" href="a2-features.html#s4">A2·S4</a></td></tr>
+    <tr><td><strong>电池养护中心 E13</strong></td><td>原生充电上限状态 · 养护提醒 · 月度报告（安全版，不写 SMC）</td><td><a class="go" href="a11-power-display-audio.html">A11·E13</a></td></tr>
+    <tr><td><strong>一键熄屏不睡眠 E21</strong></td><td>displaysleepnow + 电源断言 · 长任务守护模式（纯公开 API）</td><td><a class="go" href="a11-power-display-audio.html">A11·E21</a></td></tr>
+  </table>
+
+  <h2 id="c5" class="cat">⑤ 网络与连接 <span class="cnt">Wi-Fi · VPN · 测速</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>Wi-Fi 与网络状态</strong></td><td>SSID/信号/频段 · 特殊状态识别 · 附近网络列表 · 链路详情 · VPN/以太网行 · 设置深跳路由</td><td><a class="go" href="a2-features.html#s5">A2·S5</a></td></tr>
+    <tr><td><strong>网络质量测试 E17</strong></td><td>上下行/延迟/抖动一键诊断（系统 networkQuality）· 历史对比</td><td><a class="go" href="a12-productivity-platform.html">A12·E17</a></td></tr>
+  </table>
+
+  <h2 id="c6" class="cat">⑥ 音频与显示 <span class="cnt">音量 · 设备 · 显示器控制</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>音频基础</strong></td><td>音量状态与操作 · 输出/输入设备切换 · AirPods 聆听模式 · DDC 外接显示器音量</td><td><a class="go" href="a2-features.html#s6">A2·S6</a></td></tr>
+    <tr><td><strong>每 App 独立音量 E20</strong></td><td>虚拟声卡混音台（DriverKit 公开框架 · opt-in 安装 · 专业软件直通保护）</td><td><a class="go" href="a11-power-display-audio.html">A11·E20</a></td></tr>
+    <tr><td><strong>DDC 亮度/对比度 E14</strong></td><td>外接屏亮度滑杆 · 媒体键接管 · 昼夜自动调光</td><td><a class="go" href="a11-power-display-audio.html">A11·E14</a></td></tr>
+  </table>
+
+  <h2 id="c7" class="cat">⑦ 控制与自动化 <span class="cnt">动作 · 热键 · 接口</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>快捷动作中心 E2</strong></td><td>系统开关按钮组（深浅色/Wi-Fi/蓝牙/静音）· Shortcuts 钉选 · 无公开 API 项诚实深链</td><td><a class="go" href="a9-control-personalize.html">A9·AC</a></td></tr>
+    <tr><td><strong>自动化集成 E9</strong></td><td><code>butler://</code> URL Scheme · App Shortcuts · <code>statusbutler</code> CLI · 白名单安全</td><td><a class="go" href="a9-control-personalize.html">A9·AU</a></td></tr>
+    <tr><td><strong>全局快捷键 E22</strong></td><td>任意动作绑热键 · 冲突检测 · 默认不占用</td><td><a class="go" href="a12-productivity-platform.html">A12·E22</a></td></tr>
+    <tr><td><strong>菜单栏整理 E3</strong></td><td>收纳其他 App 图标 · 规则式触发 · 崩溃安全（高风险私有路线，可整体关闭）</td><td><a class="go" href="a9-control-personalize.html">A9·MB</a></td></tr>
+  </table>
+
+  <h2 id="c8" class="cat">⑧ 信息与效率 <span class="cnt">天气 · 日程 · 会议 · 插件</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>天气与空气 E5</strong></td><td>温度/天气符号/AQI · 网络安全纪律（https 白名单 + IP 校验）· 服务可换</td><td><a class="go" href="a8-slots-info.html">A8·WX</a></td></tr>
+    <tr><td><strong>日程倒数 E6</strong></td><td>下一件事倒计时 · 今日时间轴 · 默认隐私模式（不显标题）</td><td><a class="go" href="a8-slots-info.html">A8·CAL</a></td></tr>
+    <tr><td><strong>会议助手 E15</strong></td><td>一键入会（Zoom/Meet/Teams 链接检测）· 会议中静音条 · 隐私沿用日程策略</td><td><a class="go" href="a12-productivity-platform.html">A12·E15</a></td></tr>
+    <tr><td><strong>脚本插件槽 E16</strong> <span class="badge b-purple">战略级</span></td><td>沙盒脚本成为槽位源（超时杀灭/无网络/配额）· 插件包分发 · 官方示例</td><td><a class="go" href="a12-productivity-platform.html">A12·E16</a></td></tr>
+  </table>
+
+  <h2 id="c9" class="cat">⑨ 健康与维护 <span class="cnt">历史 · 体检 · 更新</span></h2>
+  <table>
+    <tr><th style="width:170px">功能点</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>状态历史与统计 E10</strong></td><td>电池健康曲线 · 事件日志（断连/充电/警报）· 流量统计 · 本地 SQLite</td><td><a class="go" href="a9-control-personalize.html">A9·HS</a></td></tr>
+    <tr><td><strong>系统健康体检 E18</strong></td><td>FileVault/防火墙/Gatekeeper/更新/备份巡检 · "管家体检报告" · 只检测不代改</td><td><a class="go" href="a12-productivity-platform.html">A12·E18</a></td></tr>
+    <tr><td><strong>App 更新扫描 E25</strong></td><td>Homebrew 数据源比对提示（不代装）</td><td><a class="go" href="a12-productivity-platform.html">A12·E25</a></td></tr>
+    <tr><td><strong>Sparkle 自动更新 · 遥测</strong></td><td>EdDSA 签名更新源 · 匿名遥测（默认关）· 发布流水线</td><td><a class="go" href="a2-features.html#s11">A2·S11</a></td></tr>
+  </table>
+
+  <h2 id="c10" class="cat">⑩ 平台基础与工程 <span class="cnt">架构 · 红线 · 工具</span></h2>
+  <table>
+    <tr><th style="width:170px">内容</th><th>说明</th><th style="width:160px">直达</th></tr>
+    <tr><td><strong>首次引导/本地化/无障碍</strong></td><td>"认识你的图标"引导 · 中英本地化 · Accessibility 标签</td><td><a class="go" href="a2-features.html#s10">A2·S10</a></td></tr>
+    <tr><td><strong>产品红线（四条）</strong></td><td>Wi-Fi 密码 / SMC 写入边界（风扇例外）/ 隐私最小化 / 私有 API 白名单</td><td><a class="go" href="a2-features.html#redline">A2·S12</a></td></tr>
+    <tr><td><strong>技术选型与架构</strong></td><td>Swift 6 · 四层架构 · 能效策略 · 图标渲染管线</td><td><a class="go" href="b1-tech.html">B1</a></td></tr>
+    <tr><td><strong>工程纪律与发布</strong></td><td>AGENTS 规则 · 测试体系 · GitHub Actions 出包</td><td><a class="go" href="b1-tech.html#release">B1·发布</a></td></tr>
+    <tr><td><strong>开发环境就绪状态</strong></td><td>免 Xcode/免账号路线 · 本机工具实测</td><td><a class="go" href="07-devtools.html#status">07·状态</a></td></tr>
+    <tr><td><strong>需求流程与竞品版图</strong></td><td>R-1~R-6 登记 · C 候选已全部转正 · 新需求登记处</td><td><a class="go" href="a4-register.html">A4</a> <a class="go" href="a10-landscape.html">A10</a></td></tr>
+  </table>
+
+  <h2>📄 设计文档地图（按编号）</h2>
+  <div class="quick">
+    <a href="a1-brand.html"><b>A1 品牌与命名</b><span>状态管家 · 视觉要素</span></a>
+    <a href="a2-features.html"><b>A2 复刻功能规格</b><span>S1~S12 全量基线</span></a>
+    <a href="a3-extensions.html"><b>A3 扩展速览</b><span>E1~E12 目录</span></a>
+    <a href="a5-thermal.html"><b>A5 温度与风扇</b><span>E11 · 对标 TG Pro</span></a>
+    <a href="a6-widgets.html"><b>A6 桌面小组件</b><span>E12 · WG 六族</span></a>
+    <a href="a7-perf.html"><b>A7 性能监控</b><span>E4 · PF 系列</span></a>
+    <a href="a8-slots-info.html"><b>A8 信号槽与信息</b><span>E1/E5/E6</span></a>
+    <a href="a9-control-personalize.html"><b>A9 控制与个性化</b><span>E2/E3/E7~E10</span></a>
+    <a href="a10-landscape.html"><b>A10 竞品与候选</b><span>C1~C12 已全部转正</span></a>
+    <a href="a11-power-display-audio.html"><b>A11 电池显示音频</b><span>E13/E14/E20/E21</span></a>
+    <a href="a12-productivity-platform.html"><b>A12 效率与平台</b><span>E15~E19/E22~E25</span></a>
+    <a href="a4-register.html"><b>A4 需求登记表</b><span>R-1~R-6 已采纳</span></a>
+    <a href="b1-tech.html"><b>B1 技术与架构</b><span>四层架构 · 工程纪律</span></a>
+  </div>
+
+  <div class="callout c-info">📌 本目录按<strong>功能类型</strong>组织（图标展示/个性化/硬件监控/电池电源/网络/音频显示/控制自动化/信息效率/健康维护/平台基础）；新需求采纳后归入对应类型并补行。所有链接直达具体设计章节。</div>
+</div>
+</body>
+</html>

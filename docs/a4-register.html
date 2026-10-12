@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A4 · 需求登记表 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .empty-row td{height:36px;background:#fff !important}
+  .status-chip{display:inline-block;font-size:11px;border:1px solid var(--line);border-radius:6px;padding:0 8px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A4 / Requirement Register</div>
+  <h1>需求登记表：你后续加需求的地方</h1>
+  <p class="lede">这张表是状态管家的<strong>唯一需求入口</strong>：你随时提出新想法（直接告诉我即可，我会代你登记），按行进入下表；讨论定稿后并入 <a href="a2-features.html" target="_parent">A2 功能规格</a>（复刻类）或 <a href="a3-extensions.html" target="_parent">A3 扩展设计</a>（新能力类），并在本表标记去向。规格与扩展目录都不分阶段——登记即进入全量范围。</p>
+
+  <h2>登记规则</h2>
+  <ol>
+    <li><strong>编号</strong>：R-1 起递增，一经分配不复用。</li>
+    <li><strong>归属判定</strong>：是对复刻功能的调整 → 并入 A2 对应 OG-FR；是全新能力 → 进 A3 新开 E 编号；与 E1 信号槽契合的小功能 → 并入 E1 槽位清单。</li>
+    <li><strong>状态流转</strong>：<span class="status-chip">待评审</span> → <span class="status-chip">已采纳(并入A2/A3)</span> / <span class="status-chip">需澄清</span> / <span class="status-chip">已拒绝(红线)</span>。</li>
+    <li><strong>红线预检</strong>（A2·S12）：触碰 Wi-Fi 密码 / 越权系统写入 / 新隐私权限 / 非 DDC 私有 API 的需求，登记时必须标注风险讨论结论。</li>
+    <li>表内只留<strong>一行摘要</strong>；细节写进对应规格页，避免两处维护。</li>
+  </ol>
+
+  <h2>登记表</h2>
+  <table>
+    <tr>
+      <th style="width:52px">编号</th><th>需求摘要</th><th style="width:88px">登记日期</th>
+      <th style="width:110px">建议归属</th><th style="width:96px">状态</th>
+    </tr>
+    <tr>
+      <td>R-1</td>
+      <td><strong>温度监测与风扇控制</strong>：监测 CPU/GPU 等全传感器温度、显示风扇转速、手动/曲线控制风扇、温度警报（对标 TG Pro）</td>
+      <td>2026-10-12</td>
+      <td>E11 → <a href="a5-thermal.html" target="_parent">A5 深度设计</a></td>
+      <td><span class="status-chip">已采纳(并入A5)</span></td>
+    </tr>
+    <tr>
+      <td>R-2</td>
+      <td><strong>桌面小组件</strong>：温度/风扇/状态等信息以苹果桌面小组件（WidgetKit）常驻桌面显示，支持组件内快捷操作</td>
+      <td>2026-10-12</td>
+      <td>E12 → <a href="a6-widgets.html" target="_parent">A6 深度设计</a></td>
+      <td><span class="status-chip">已采纳(并入A6)</span></td>
+    </tr>
+    <tr>
+      <td>R-4</td>
+      <td><strong>批量采纳竞品候选功能</strong>（A10 全部可加项）：电池养护、DDC 亮度、会议助手、脚本插件槽、网络测速、健康体检、磁盘监控、全局热键、昼夜主题、趣味皮肤、更新扫描</td>
+      <td>2026-10-12</td>
+      <td>E13~E19、E22~E25 → <a href="a11-power-display-audio.html" target="_parent">A11</a> / <a href="a12-productivity-platform.html" target="_parent">A12</a></td>
+      <td><span class="status-chip">已采纳(并入A11/A12)</span></td>
+    </tr>
+    <tr>
+      <td>R-5</td>
+      <td><strong>每 App 独立音量</strong>（用户提出）：按应用单独调音量/静音</td>
+      <td>2026-10-12</td>
+      <td>E20 → <a href="a11-power-display-audio.html" target="_parent">A11</a>（虚拟声卡 DriverKit 路线，opt-in 安装）</td>
+      <td><span class="status-chip">已采纳(并入A11)</span></td>
+    </tr>
+    <tr>
+      <td>R-6</td>
+      <td><strong>熄屏不睡眠</strong>（用户提出）：关闭显示器但系统继续运行</td>
+      <td>2026-10-12</td>
+      <td>E21 → <a href="a11-power-display-audio.html" target="_parent">A11</a>（纯公开 API）</td>
+      <td><span class="status-chip">已采纳(并入A11)</span></td>
+    </tr>
+<tr>
+      <td>R-3</td>
+      <td><strong>性能实时监控</strong>：上下行网速、CPU 使用率（大小核分组）、内存与压力、GPU 使用率等的实时监测</td>
+      <td>2026-10-12</td>
+      <td>E4 → <a href="a7-perf.html" target="_parent">A7 深度设计</a></td>
+      <td><span class="status-chip">已采纳(并入A7)</span></td>
+    </tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+  <div class="callout c-warn">⚠️ 登记新需求时的三个快速自检：① 它让用户"一眼"看到什么？（与产品定位的关系）② 需要什么系统权限/数据源？③ 是否触碰 S12 四条红线？——三条都有清晰答案的需求，评审通常一次通过。</div>
+
+  <h2>变更记录</h2>
+  <table>
+    <tr><th style="width:100px">日期</th><th>变更</th></tr>
+    <tr><td>2026-10-12</td><td>建表。复刻范围（A2 全量规格）与扩展目录 E1–E10（A3）已定稿；登记表启用。</td></tr>
+    <tr><td>2026-10-12</td><td>R-1 登记并同日采纳：温度监测与风扇控制（对标 TG Pro）→ 新增 E11，深度设计成文 <a href="a5-thermal.html" target="_parent">A5</a>；同步修订 A2 红线二（风扇域 SMC 写入为唯一例外）与 B1 监控层（ThermalController）。</td></tr>
+    <tr><td>2026-10-12</td><td>R-2 登记并同日采纳：桌面小组件 → 新增 E12，深度设计成文 <a href="a6-widgets.html" target="_parent">A6</a>（六族组件 + 交互控制 + 快照共享刷新策略）；B1 增加 Widget 扩展 target 与快照写入层。</td></tr>
+    <tr><td>2026-10-12</td><td>R-3 登记并同日采纳：性能实时监控（网速/CPU/内存/GPU）→ E4 由目录条目升级为深度设计 <a href="a7-perf.html" target="_parent">A7</a>（PF-01~40 + API 矩阵 + GPU 边界与回退链 + 采样纪律）。</td></tr>
+    <tr><td>2026-10-12</td><td>R-4/R-5/R-6 登记并采纳：A10 候选 C1~C12 全部转正为 E13~E19/E22~E25，加上用户提出的每 App 音量（E20）与熄屏不睡眠（E21），深度设计成文 A11/A12。扩展总数 E1~E25 全部完成深度设计。</td></tr>
+    <tr><td>2026-10-12</td><td>全量深度设计补齐（单一阶段决策）：E1/E5/E6 深度设计成文 <a href="a8-slots-info.html" target="_parent">A8</a>（SL/WX/CAL 编号体系）；E2/E3/E7/E8/E9/E10 成文 <a href="a9-control-personalize.html" target="_parent">A9</a>（AC/MB/TH/IC/AU/HS 编号体系）。至此 E1~E12 全部扩展均有深度设计页。</td></tr>
+  </table>
+</div>
+</body>
+</html>

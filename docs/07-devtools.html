@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>07 · 开发工具清单 — Status Trio 深度分析</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#2f6fed;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre .c{color:#7e8ba0}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef4fe;border-color:#cdddfb;color:#274a7e}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .c-ok{background:#e9f7ef;border-color:#c4e8d2;color:#1a6b3c}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .cmd{font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">07 / Dev Tools</div>
+  <h1>开发工具清单：开工前要装什么</h1>
+  <p class="lede">按"开发一个类 Status Trio 的 macOS 应用"倒推的全部工具需求，分四个层级：编译运行（必须）、日常开发（强烈建议）、发布分发（上线才需要）、可选支线。<strong>本机状态列</strong>是 2026-10-12 在这台 Mac（macOS 26.5 / Apple Silicon）上的实测结果。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#tier1">T1 编译运行必备</a>
+    <a href="#tier2">T2 日常开发强烈建议</a>
+    <a href="#tier3">T3 发布分发链</a>
+    <a href="#tier4">T4 可选支线工具</a>
+    <a href="#status">本机实测状态汇总</a>
+    <a href="#quickstart">最小开工清单（TL;DR）</a>
+  </div>
+
+  <div class="callout c-ok">✅ <strong>本机"编译 + 测试"全链路已通，且零付费、零账号、零 Xcode。</strong>① 编译：swiftly + Swift 6.4 实测 25.5 秒全量构建通过；② 测试：本项目测试将采用苹果新一代 <strong>Swift Testing</strong> 框架（已实测无需 Xcode 即可运行，绕开"XCTest 只随 Xcode 提供"的限制）；③ 分发：不上架 App Store 则<strong>无需 Apple Developer 付费账号</strong>，Ad-hoc 签名 + GitHub Releases 即可（Sparkle 更新密钥本地生成）。可选待办见文末状态汇总与 TL;DR。</div>
+
+  <h2 id="tier1">T1 · 编译运行必备（缺一个都编不过）</h2>
+  <table>
+    <tr><th style="width:150px">工具</th><th>用途</th><th style="width:230px">获取方式</th><th style="width:120px">本机状态</th></tr>
+    <tr>
+      <td><strong>Swift 6 工具链</strong><br><span class="badge b-red">必须</span></td>
+      <td>语言编译器 + SPM 包管理。Status Trio 要求 Swift 6；CI 锁定 6.3.3。<strong>本机注意：CLT 自带的 6.3.1 实测损坏</strong>（SPM 清单库版本混杂），已用 swiftly 装 6.4 替代</td>
+      <td>推荐 swiftly：<code class="cmd">brew install swiftly && swiftly init --assume-yes</code></td>
+      <td><span class="badge b-green">✓ 6.4 (swiftly)</span></td>
+    </tr>
+    <tr>
+      <td><strong>macOS SDK ≥ 26</strong><br><span class="badge b-red">必须</span></td>
+      <td>AppKit/SwiftUI/CoreWLAN 等全部框架头文件。SDK &lt; 26 会<strong>静默</strong>产出旧版弹层外观（issue #40），Status Trio 构建脚本会直接报错拦截</td>
+      <td>随 CLT / Xcode 提供</td>
+      <td><span class="badge b-green">✓ 26.4.1</span></td>
+    </tr>
+    <tr>
+      <td><strong>Command Line Tools</strong><br><span class="badge b-red">必须</span></td>
+      <td>swift / clang / git / xcrun / codesign / plutil 等命令行全家桶的载体</td>
+      <td><code class="cmd">xcode-select --install</code></td>
+      <td><span class="badge b-green">✓ 已装</span></td>
+    </tr>
+    <tr>
+      <td><strong>git</strong><br><span class="badge b-red">必须</span></td>
+      <td>版本控制；SPM 拉取依赖（Sparkle）也走 git</td>
+      <td>系统自带</td>
+      <td><span class="badge b-green">✓ 2.49.0</span></td>
+    </tr>
+    <tr>
+      <td><strong>macOS 13+ 机器</strong><br><span class="badge b-red">必须</span></td>
+      <td>目标平台本身。Status Trio 部署目标 macOS 13，开发机需要能跑 macOS 26 SDK 的系统</td>
+      <td>—</td>
+      <td><span class="badge b-green">✓ 26.5 / arm64</span></td>
+    </tr>
+  </table>
+
+  <h2 id="tier2">T2 · 日常开发强烈建议</h2>
+  <table>
+    <tr><th style="width:150px">工具</th><th>用途</th><th style="width:230px">获取方式</th><th style="width:120px">本机状态</th></tr>
+    <tr>
+      <td><strong>Homebrew</strong><br><span class="badge b-blue">建议</span></td>
+      <td>macOS 缺失包管理器，下面多个工具经它安装</td>
+      <td><code class="cmd">/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"</code></td>
+      <td><span class="badge b-green">✓ 7.0.7</span></td>
+    </tr>
+    <tr>
+      <td><strong>Xcode（完整版，26+）</strong><br><span class="badge b-gray">可选 · 已降级</span></td>
+      <td><strong>本项目可以完全不装</strong>：编译走 swiftly + SPM（已验证），测试走 Swift Testing 框架（已验证，不需要 Xcode 自带的 XCTest）。仅以下情况才装：想要 Xcode IDE 的图形化调试/Interface 预览、Instruments 性能分析、或想跑参考项目（status-trio）自己的 XCTest 测试套件</td>
+      <td>App Store（需免费 Apple ID）或 developer.apple.com 下载 .xip，或 <code class="cmd">brew install --cask xcodes</code></td>
+      <td><span class="badge b-gray">不装 ✓</span>（需要时再装）</td>
+    </tr>
+    <tr>
+      <td><strong>GitHub CLI (gh)</strong><br><span class="badge b-blue">建议</span></td>
+      <td>Status Trio 的 AGENTS.md 要求用 <code class="cmd">gh workflow run</code> 做发布预检、<code class="cmd">gh run watch</code> 跟踪 CI；日常管理 release/issue 也方便</td>
+      <td><code class="cmd">brew install gh && gh auth login</code></td>
+      <td><span class="badge b-green">✓ 已装</span>（待 <code class="cmd">gh auth login</code> 登录）</td>
+    </tr>
+    <tr>
+      <td><strong>编辑器</strong><br><span class="badge b-gray">任选</span></td>
+      <td>写 Swift：Xcode / VS Code + swift-extension / Cursor / ZCode 皆可</td>
+      <td>—</td>
+      <td><span class="badge b-gray">按习惯</span></td>
+    </tr>
+  </table>
+
+  <h2 id="tier3">T3 · 发布分发链（出 DMG / 自动更新 / 公证时需要）</h2>
+  <table>
+    <tr><th style="width:150px">工具</th><th>用途</th><th style="width:230px">获取方式</th><th style="width:120px">本机状态</th></tr>
+    <tr>
+      <td><strong>codesign</strong><br><span class="badge b-blue">P2</span></td>
+      <td>App 签名（Ad-hoc 本地用 / Developer ID 对外分发）</td>
+      <td>系统自带</td>
+      <td><span class="badge b-green">✓ 已装</span></td>
+    </tr>
+    <tr>
+      <td><strong>hdiutil + ditto + shasum + plutil + xmllint</strong><br><span class="badge b-blue">P2</span></td>
+      <td>DMG 打包、bundle 拷贝、SHA-256 校验和、Info.plist 与 XML 处理——Status Trio 的 <code class="cmd">release.sh</code> 逐项检查这些命令</td>
+      <td>系统自带</td>
+      <td><span class="badge b-green">✓ 全部已装</span></td>
+    </tr>
+    <tr>
+      <td><strong>notarytool + stapler</strong><br><span class="badge b-blue">P2</span></td>
+      <td>Apple 公证与装订（Developer ID 分发的通行证）</td>
+      <td>随 CLT/Xcode</td>
+      <td><span class="badge b-green">✓ 已装</span></td>
+    </tr>
+    <tr>
+      <td><strong>ruby ≥ 2.6</strong><br><span class="badge b-blue">P2</span></td>
+      <td>跑 <code class="cmd">update-appcast.rb</code> 生成 Sparkle 更新源</td>
+      <td>系统自带</td>
+      <td><span class="badge b-green">✓ 2.6.10</span></td>
+    </tr>
+    <tr>
+      <td><strong>Apple Developer Program 账号</strong><br><span class="badge b-gray">不上架则不需要</span></td>
+      <td><strong>结论：本项目当前路线 0 元、无需注册任何账号。</strong>付费账号（$99/年）只在三种场景需要：上 Mac App Store、Developer ID 签名+公证（消除用户首次打开的 Gatekeeper 警告）、TestFlight。不上架时的替代：Ad-hoc 签名（codesign 系统自带）+ GitHub Releases 分发 DMG，用户首次打开需"右键→打开"或 <code class="cmd">xattr -dr com.apple.quarantine</code> 放行（参考项目目前正是这样分发的）；Sparkle 自动更新的 EdDSA 密钥在本地生成，与 Apple 账号无关</td>
+      <td>需要时再办：developer.apple.com（需人工操作）</td>
+      <td><span class="badge b-gray">不办 ✓</span></td>
+    </tr>
+    <tr>
+      <td><strong>Sparkle 签名密钥</strong><br><span class="badge b-blue">P2</span></td>
+      <td>EdDSA 私钥签 appcast（自动更新防篡改）</td>
+      <td><code class="cmd">.build/…/Sparkle/bin/generate_keys</code>（SPM 拉下 Sparkle 后自带工具）</td>
+      <td><span class="badge b-gray">P2 再生成</span></td>
+    </tr>
+  </table>
+
+  <h2 id="tier4">T4 · 可选支线工具（对应 P3 功能）</h2>
+  <table>
+    <tr><th style="width:150px">工具</th><th>用途</th><th style="width:230px">获取方式</th><th style="width:120px">本机状态</th></tr>
+    <tr>
+      <td><strong>cmake</strong><br><span class="badge b-gray">P3</span></td>
+      <td>编译 libimobiledevice 全家桶（openssl/libplist/… → iDevice 电量 Helper）</td>
+      <td><code class="cmd">brew install cmake</code></td>
+      <td><span class="badge b-green">✓ 已装</span></td>
+    </tr>
+    <tr>
+      <td><strong>pkg-config / autoconf / automake / libtool</strong><br><span class="badge b-gray">P3</span></td>
+      <td>同上，C 库构建三件套（libtool 系统已有 /usr/bin/libtool）</td>
+      <td><code class="cmd">brew install pkg-config autoconf automake</code></td>
+      <td><span class="badge b-green">✓ 已装</span></td>
+    </tr>
+    <tr>
+      <td><strong>DDC 调试工具 ddcutil 类</strong><br><span class="badge b-gray">P3</span></td>
+      <td>开发外接显示器音量时可另装 <code class="cmd">ddcctl</code> 对照验证（App 内私有 API 自带，不装也行）</td>
+      <td><code class="cmd">brew install ddcctl</code></td>
+      <td><span class="badge b-gray">未装（可选）</span></td>
+    </tr>
+  </table>
+
+  <h2 id="status">本机实测状态汇总（2026-10-12）</h2>
+  <table>
+    <tr><th>检查项</th><th style="width:300px">结果</th><th style="width:90px">判定</th></tr>
+    <tr><td>macOS 版本</td><td>26.5（25F71，Apple Silicon）</td><td><span class="badge b-green">✓</span></td></tr>
+    <tr><td>Swift</td><td>swiftly 管理的 <strong>6.4.0</strong>（~/.swiftly，用户级）。注：CLT 自带 6.3.1 实测损坏（SPM 清单符号缺失），建议顺手更新 CLT 修复</td><td><span class="badge b-green">✓ 6.4</span></td></tr>
+    <tr><td>macOS SDK</td><td>26.4.1（≥ 26 硬性要求达标，swiftly 工具链 + CLT SDK 混合可用）</td><td><span class="badge b-green">✓</span></td></tr>
+    <tr><td>git / Homebrew / ruby / python3</td><td>2.49.0 / 7.0.7 / 2.6.10 / 3.12.9</td><td><span class="badge b-green">✓</span></td></tr>
+    <tr><td>签名/公证/打包命令</td><td>codesign、stapler、notarytool、hdiutil、ditto、shasum、plutil、xmllint 全在</td><td><span class="badge b-green">✓</span></td></tr>
+    <tr><td>gh CLI</td><td>本次已安装（brew），待 <code class="cmd">gh auth login</code> 登录</td><td><span class="badge b-green">✓ 新装</span></td></tr>
+    <tr><td>swiftly + Swift 6.4 工具链</td><td>本次已安装（brew + swiftly init），修复了 CLT 损坏导致的 SPM 清单编译失败</td><td><span class="badge b-green">✓ 新装</span></td></tr>
+    <tr><td>pkg-config / autoconf / automake</td><td>本次已安装（brew）</td><td><span class="badge b-green">✓ 新装</span></td></tr>
+    <tr><td><strong>实测编译 status-trio</strong></td><td><code class="cmd">swift build</code>（swiftly 6.4）：216 个构建任务 <strong>25.5 秒全部通过</strong>，产物 Mach-O arm64 可执行文件正常</td><td><span class="badge b-green">✓ 通过</span></td></tr>
+    <tr><td><strong>实测 Swift Testing（无 Xcode 跑测试）</strong></td><td>用 swiftly 6.4 新建最小测试包验证：<code class="cmd">swift test</code> + <code class="cmd">import Testing</code> 框架<strong>完整运行通过</strong>。本项目测试将采用 Swift Testing（非 XCTest），全流程无需 Xcode</td><td><span class="badge b-green">✓ 通过</span></td></tr>
+    <tr><td>CLT 更新（可选修复）</td><td>系统 CLT 内部版本混杂（不影响 swiftly 路线，仅"想用系统自带 swift"时才碍事）。修复命令（需 sudo）：<code class="cmd">sudo softwareupdate --install "Command Line Tools for Xcode 26.6-26.6"</code>。⚠️ 若晚上升级了系统（26.7.1 或 27.0.1），升级后 CLT 常被标记失效，届时先跑这条再干活</td><td><span class="badge b-gray">可选</span></td></tr>
+    <tr><td>完整版 Xcode</td><td><strong>不装</strong>（编译/测试均已有免 Xcode 方案）。将来要 IDE/Instruments 或跑参考项目的 XCTest 套件时再装</td><td><span class="badge b-gray">不需要 ✓</span></td></tr>
+    <tr><td>Apple Developer 账号 / 付费证书</td><td><strong>不办</strong>：不上架 App Store，Ad-hoc 签名 + GitHub Releases 分发，Sparkle 密钥本地生成。将来若想消除用户首次打开警告（公证），再办 $99/年</td><td><span class="badge b-gray">不需要 ✓</span></td></tr>
+    <tr><td>Developer ID 证书</td><td>钥匙串 0 个签名身份；需 Apple Developer 账号（$99/年），只能你本人办理</td><td><span class="badge b-orange">P2 再办</span></td></tr>
+    <tr><td><strong>实测编译 status-trio</strong></td><td><code class="cmd">swift build</code> 在本机跑通（249 文件 + Sparkle 依赖拉取），证明 T1 级工具链完整可用</td><td><span class="badge b-green">✓ 通过</span></td></tr>
+  </table>
+
+  <h2 id="quickstart">最小开工清单（TL;DR · 2026-10-12 更新）</h2>
+  <pre><span class="c"># ✅ 已经就绪、什么都不用再做的：</span>
+<span class="c">#   编译（swiftly 6.4，已实测）· 测试（Swift Testing，已实测）· 签名（Ad-hoc，系统自带）</span>
+<span class="c">#   打包 DMG（hdiutil 系统自带）· gh/cmake/pkg-config/autoconf/automake（brew 已装）</span>
+export PATH="$HOME/.swiftly/bin:$PATH"     <span class="c"># 建议把这句加进 ~/.zshrc（一次即可）</span>
+
+<span class="c"># 🌙 晚上回家升级系统后的两步（按顺序）：</span>
+<span class="c">#   1. 升级系统：建议 macOS 26.7.1（小版本，3.8GB，稳）；</span>
+<span class="c">#      macOS 27.0.1 是 11.8GB 大版本，工具链兼容性未验证，求稳先不升</span>
+<span class="c">#   2. 修 CLT（系统升级后常失效，修好备用）：需要输入你的开机密码</span>
+sudo softwareupdate --install "Command Line Tools for Xcode 26.6-26.6"
+
+<span class="c"># 🔑 gh 登录（一条命令，跟浏览器走）：发布预检时才真正用到</span>
+gh auth login
+
+<span class="c"># ❌ 明确不用装的：Xcode（12GB，编译测试已绕开）· Apple 开发者账号（不上架不需要）</span>
+<span class="c">#    create-dmg / xcbeautify / ddcctl（可选中的可选）· 任何付费证书</span></pre>
+  <div class="callout c-info">📌 结论：<strong>今天就能开工</strong>——T1 全绿，T2/T3 的缺口（Xcode、开发者账号）都不阻塞 M1 编码，按里程碑需要再补。工具与需求基线的对应关系见 <a href="06-requirements.html" target="_parent">06 复刻需求基线</a> 的 P0–P3 分级。</div>
+
+  <p class="lede" style="margin-top:30px">— 返回 <a href="index.html" target="_parent">文档中心</a> —</p>
+</div>
+</body>
+</html>

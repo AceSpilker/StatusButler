@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>04 · 架构与数据流 — Status Trio 深度分析</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#2f6fed;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:2px}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef4fe;border-color:#cdddfb;color:#274a7e}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  /* 分层图 */
+  .stack{display:flex;flex-direction:column;gap:8px;margin:18px 0}
+  .layer{border-radius:12px;padding:12px 18px;border:1px solid var(--line);background:var(--soft)}
+  .layer b{font-size:14.5px}
+  .layer .d{font-size:12.5px;color:var(--sub);margin-top:2px}
+  .l1{border-left:5px solid #8e44ad}.l2{border-left:5px solid #2f6fed}.l3{border-left:5px solid #1e9e52}.l4{border-left:5px solid #e67e22}
+  .arrow{text-align:center;color:#9aa3af;font-size:15px;line-height:1}
+  /* 数据流管道 */
+  .pipe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0}
+  .pipe .node{background:#eef4fe;border:1px solid #cdddfb;color:#274a7e;border-radius:8px;padding:6px 12px;font-size:12.8px;font-weight:600}
+  .pipe .sep{color:#9aa3af;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">04 / Architecture</div>
+  <h1>架构与数据流：4 万行如何组织</h1>
+  <p class="lede">单进程、单组合根、四层单向依赖的 MVVM 变体：监控层协议化读系统 → 状态仓库聚合 → 展示映射层把状态翻译成"场景" → UI 层渲染。全 Swift 6 严格并发，核心对象 <code>@MainActor</code>。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#boot">启动链路与组合根</a>
+    <a href="#layers">四层架构与目录映射</a>
+    <a href="#flow">核心数据流：事件驱动 + 兜底轮询</a>
+    <a href="#snapshot">StatusSnapshot：一个值类型统治图标</a>
+    <a href="#iconpipe">图标渲染管线</a>
+    <a href="#bt">蓝牙电量：三源合并 + 可见性门控</a>
+    <a href="#settings">设置系统与响应式联动</a>
+    <a href="#telemetry">遥测与生命周期</a>
+    <a href="#lessons">可复用的架构经验</a>
+  </div>
+
+  <h2 id="boot">启动链路与组合根</h2>
+  <pre>main.swift                      // 7 行：NSApplication + delegate + run()
+  └─ AppDelegate (applicationDidFinishLaunching)
+       ├─ SingleInstanceGuard()          // 失败即 terminate（单实例锁）
+       └─ AppEnvironment.live()          // ★ 组合根：一次性装配全部依赖
+            ├─ SettingsStore()               // UserDefaults → 60 个 @Published
+            ├─ makeStore(…)                  // SystemStatusStore + 7 个监控器
+            │     └─ BluetoothDeviceController(三源电量注入)
+            ├─ Localization()                // 12 语言
+            ├─ IconPresentationViewModel     // 状态 → 图标场景
+            ├─ StatusBarController           // 菜单栏图标 + Popover
+            ├─ AppIconController             // Dock 图标 + 激活策略
+            ├─ SettingsWindowController / OnboardingWindowController
+            ├─ MainMenuController            // 常规应用菜单
+            ├─ ChargingEffectClock / MotionMonitor
+            └─ TelemetryReporter
+       environment.start()             // 顺序启动各子系统（store 最后）
+  UpdaterManager.start()               // Sparkle</pre>
+  <p><code>AppEnvironment</code> 是教科书式的<strong>手工依赖注入容器</strong>：所有生产对象在 <code>live()</code> 里构造、闭包串联（如 Dock 渲染回调直接注入 <code>DockIconRenderer.image</code>），测试可按需替换任何一环。AppDelegate 本身只有 93 行——逻辑全部在组合根。</p>
+
+  <h2 id="layers">四层架构与目录映射</h2>
+  <div class="stack">
+    <div class="layer l1"><b>① Monitoring 监控层</b> · <code>Monitoring/</code> 37 文件
+      <div class="d">每个系统信号一个监控器，全部面向协议（<code>MonitorProtocols.swift</code>）：BatteryMonitor / WiFiMonitor / NetworkConnectionMonitor / VPNMonitor / VolumeMonitor / AudioInputMonitor / BluetoothDeviceController / MobileBatteryController / AppleDeviceDiscoveryController… 另有 ReadWatchdog（读超时看门狗）、SystemEventObserverBag（通知注销聚合）等基建。</div>
+    </div>
+    <div class="arrow">▲ 只产出状态值，不知道 UI 存在</div>
+    <div class="layer l2"><b>② Store 状态仓库层</b> · <code>Store/SystemStatusStore.swift</code> 1043 行 + <code>Models/</code> 38 文件
+      <div class="d"><code>@MainActor ObservableObject</code>。聚合所有监控器为单一 <code>StatusSnapshot</code>（+ 弹层专用 popupSnapshot、vpnStatus 等旁路状态）；持有子控制器（电池详情 / Wi-Fi 网络 / 主链路 / 蓝牙设备 / 移动电池 / Apple 设备发现 / 聆听模式）。Models 层全是不含行为的值类型（快照、选项、目录）。</div>
+    </div>
+    <div class="arrow">▲ 只做"状态→表现"的纯映射，无系统调用</div>
+    <div class="layer l3"><b>③ Presentation 展示映射层</b> · <code>Presentation/</code>（Icon 9 文件 + Panel 11 文件）
+      <div class="d">两套映射器：图标侧 <code>IconPresentationMapper</code> 把快照+外观配置翻译成 <code>IconSceneState</code>（外环/中心/底部三段场景）；面板侧 <code>PanelPresentationMapper</code> 翻译成各分区 ViewModel。这一层是纯函数式的，被 231 个测试文件大量直接测试。</div>
+    </div>
+    <div class="arrow">▲ 只消费场景状态</div>
+    <div class="layer l4"><b>④ UI 层</b> · <code>UI/</code> 58 文件 + <code>App/</code> 16 文件
+      <div class="d">StatusBarController（菜单栏壳）、StatusPopoverView（SwiftUI 弹层内容）、Settings/（设置中心 23 文件）、Icon/（渲染器与缓存 17 文件）；App/ 放生命周期类（激活策略、Dock 点击行为、登录项、单实例、更新、充电效果监控、同步器×2）。</div>
+    </div>
+  </div>
+  <p>另有三个横向模块：<code>Audio/</code>（20 文件，CoreAudio/ DDC 封装）、<code>Localization/</code>、<code>Telemetry/</code>（9 文件）。</p>
+
+  <h2 id="flow">核心数据流：事件驱动 + 兜底轮询</h2>
+  <div class="pipe">
+    <span class="node">系统事件源（推送）</span><span class="sep">＋</span>
+    <span class="node">兜底轮询（默认 15s）</span><span class="sep">→</span>
+    <span class="node">各 Monitor</span><span class="sep">→</span>
+    <span class="node">SystemStatusStore</span><span class="sep">→</span>
+    <span class="node">@Published snapshot</span><span class="sep">→</span>
+    <span class="node">IconPresentationViewModel</span><span class="sep">→</span>
+    <span class="node">场景状态</span><span class="sep">→</span>
+    <span class="node">渲染器（菜单栏/Dock）</span>
+  </div>
+  <p><code>SystemStatusStore</code> 顶部注释把能效策略写得非常清楚（这是全项目最值得抄的一段设计）：</p>
+  <ul>
+    <li><strong>推送优先</strong>：电池走 IOKit 通知、Wi-Fi 走 CoreWLAN 事件、音量走 CoreAudio 属性监听、网络走 NWPathMonitor——每个变化都有推送通道；</li>
+    <li><strong>兜底轮询</strong>：电池每 tick 都刷新（它画在图标上，不能陈旧）；Wi-Fi 与音量<strong>只在弹层和设置窗都不可见时，每第 4 个 tick</strong>刷一次（<code>hiddenFallbackTickStride = 4</code>，防推送丢失的看门狗，默认间隔下即 60 秒一次）；</li>
+    <li><strong>睡眠感知</strong>：显示器睡眠时跳过轮询，但<strong>最多连跳 20 次</strong>（<code>maximumDisplayAsleepSkips</code>，防"唤醒通知丢失导致电池读数冻结一整个会话"的自愈上限）；</li>
+    <li><strong>定时器宽容</strong>：休眠容忍度为间隔的 1/5（<code>refreshSleepTolerance</code>）——不要求 CPU 精确唤醒，常驻菜单栏 App 的礼貌；</li>
+    <li><strong>弹层防抖</strong>：弹层数据 500ms 合并（<code>popupDebounceInterval</code>），避免打开瞬间十几个信号连续重绘。</li>
+  </ul>
+  <div class="callout c-info">📌 旁路状态刻意不进快照：VPN 状态、受限网络标记、弹层可见性等都单独 <code>@Published</code>，注释明确说明理由——"没有任何东西画它，就不该进入快照的相等性比较路径"。这保证了图标渲染缓存 key 的最小化。</div>
+
+  <h2 id="snapshot">StatusSnapshot：一个值类型统治图标</h2>
+  <pre>StatusSnapshot          // 电池 + Wi-Fi/连接 + 音量 的当前值（Equatable）
+  ├─ battery:    百分比/充电/低电量模式…
+  ├─ connection: NetworkConnection（wifi/热点/临时/共享/有线/离线…）
+  └─ volume:     等级/静音/设备…
+
+快照相等性 = 图标不变 = 不重绘</pre>
+  <p>整套 UI 都从这个值类型的变更驱动：SwiftUI 视图订阅 <code>store.$snapshot</code>，图标管线订阅经 <code>removeDuplicates()</code> 过滤后的同一流（Combine）。设置变更则走 <code>settings.iconPresentationPublisher</code> 另一条流，两流在 <code>IconPresentationViewModel</code> 合并。</p>
+
+  <h2 id="iconpipe">图标渲染管线</h2>
+  <pre>StatusSnapshot ─┐
+Settings(外观) ─┴→ IconPresentationMapper → IconSceneState
+                                                │  OuterRingState（外环/充电呼吸）
+                                                │  CenterState（Wi-Fi 或蓝牙音频符号）
+                                                │  FooterState（音量点/弧）
+                    ┌───────────────────────────┼───────────────────────────┐
+                    ▼                           ▼                           ▼
+        StatusIconRenderer            DockIconRenderer            网页模拟器(官网)
+        (菜单栏 NSImage)              (+背景样式/像素长度)          同一套几何数据
+                    │                           │
+        StatusBarRenderCache          DockIconRenderCache          ← 状态/外观 key 缓存
+                    │                           │
+                    └────── IconRenderCoalescer（高频刷新合并）──────┘</pre>
+  <ul>
+    <li><strong>120×120 原始几何坐标系</strong>按比例缩放到目标 pt，矢量结构源自仓库里的 <code>status-menubar.svg</code>；</li>
+    <li><strong>SF Symbols 墨水居中补偿</strong>：符号布局框 ≠ 可见墨水，渲染器按配置缓存每个符号的轴承补偿（Issue #30 的核心教训，两条回归测试永久看护）；</li>
+    <li><strong>菜单栏/Dock 对等原则</strong>：AGENTS.md 规定任何图标改动必须同 PR 镜像到 Dock 渲染（含设置项、缓存 key、订阅、测试五处），菜单栏专属设置必须文档化并有测试声明；</li>
+    <li>充电动画独立成 <strong>时间线系统</strong>（Event → Timeline → Phase → Palette → 帧缓存），尊重 Reduce Motion 与显示器睡眠，带测试模式。</li>
+  </ul>
+
+  <h2 id="bt">蓝牙电量：三源合并 + 可见性门控</h2>
+  <table>
+    <tr><th>来源</th><th>机制</th><th>定位</th></tr>
+    <tr><td>① IOBluetooth 配对报告</td><td>系统接口直接带电量</td><td>主要来源</td></tr>
+    <tr><td>② pmset 配件电源 + AccessoryPowerNotify 事件</td><td><code>PmsetAccessoryBatteryWorker</code> + 事件监听</td><td>补 ① 缺失的设备</td></tr>
+    <tr><td>③ CoreBluetooth LE 扫描</td><td>GATT Battery Service 广播解析（<code>BluetoothLEBatteryParsing</code>）</td><td>附近未配对设备；默认关；允许列表；仅授权且弹层可见时才创建 CBCentralManager；会话取消门控 + 候选缓存 + 合并去重</td></tr>
+  </table>
+  <p>连接/断开走 <code>IOBluetoothConnectionEventMonitor</code> + <code>BluetoothDeviceActionPerformer</code>（HID 类设备行内二次确认）。两个"同步器"（<code>BluetoothAudioIconOverrideSynchronizer</code> / <code>BluetoothNearbyBatteryOptOutSynchronizer</code>）专职把系统状态与设置偏好协调成最终图标/面板行为，避免把这类胶水逻辑撒进控制器。</p>
+
+  <h2 id="settings">设置系统与响应式联动</h2>
+  <pre>UserDefaults ←→ SettingsStore（1333 行，60 个 @Published，didSet 即持久化）
+                    │
+                    ├→ store.bindInputSettings(settings)        // 轮询间隔、输入开关…
+                    ├→ store.bindMobileBatterySettings(...)     // Apple 设备刷新策略
+                    ├→ IconPresentationSettings(...)            // 外观 → 图标管线
+                    ├→ StatusBarController(isVisible:)          // 位置开关
+                    └→ 设置界面双向绑定</pre>
+  <ul>
+    <li>设置键有强类型默认值与取值范围（如图标大小 <code>iconSizeRange</code>、电池阈值范围）；</li>
+    <li>跨版本迁移独立成文件（<code>AppleDeviceSettingsMigration</code>），不污染主 Store；</li>
+    <li>设置的每次订阅都 <code>removeDuplicates()</code>，防止 UserDefaults 回写触发回环刷新。</li>
+  </ul>
+
+  <h2 id="telemetry">遥测与生命周期</h2>
+  <ul>
+    <li><strong>遥测分层</strong>：Consent（同意状态与版本）→ Eligibility（生产/调试资格）→ AppMetadata（快照内容）→ Models → Transport（URLSession）→ Client（发送）→ Reporter（编排）；接口化 <code>TelemetryReporting</code> 便于测试与关闭；</li>
+    <li><strong>生命周期对称</strong>：<code>AppEnvironment.start()/stop()</code> 成对（telemetry 停、时钟停、订阅清空、observer 移除）；通知观察者用 <code>SystemEventObserverBag</code> 聚合注销，避免泄漏；</li>
+    <li><strong>teardown 安全</strong>：<code>nonisolated(unsafe)</code> 仅用于"仅主 Actor 写、任意线程可注销"的 observer 句柄，注释里逐条论证安全性（Swift 6 deinit 隔离限制下的标准姿势）。</li>
+  </ul>
+
+  <h2 id="lessons">可复用的架构经验（复刻清单）</h2>
+  <ol>
+    <li><strong>组合根集中装配</strong>：main 极薄，AppDelegate 只管生命周期，一切依赖在 <code>AppEnvironment.live()</code> 可读地串起来——测试想换哪个监控器就换哪个；</li>
+    <li><strong>监控器协议化</strong>：<code>any BatteryMonitoring</code> 这类抽象让 5.5 万行测试代码可以完全不碰真实系统 API；</li>
+    <li><strong>单一快照 + 刻意的旁路</strong>：能画进图标的进快照，只服务面板的走独立属性——渲染缓存 key 因此天然最小；</li>
+    <li><strong>纯函数映射层</strong>：状态→场景的翻译不碰系统，逻辑测试不需要起 App；</li>
+    <li><strong>能效常量集中且带注释故事</strong>：步长、跳过上限、容忍度全部具名常量并解释推导过程，一年后仍可安全修改；</li>
+    <li><strong>菜单栏/Dock 同源渲染</strong>：一套场景状态喂两个渲染器 + 各自缓存，从第一天保证双端一致（否则永远在补票）；</li>
+    <li><strong>把"容易静默坏"的东西写成契约测试</strong>：SDK 版本、appcast 语言覆盖、私有 API 链接、居中几何——脚本断言，不靠人眼。</li>
+  </ol>
+  <p class="lede" style="margin-top:26px">→ 下一页 <a href="05-engineering.html" target="_parent">05 工程实践</a>：构建、发布、协作规则；随后进入 <a href="06-requirements.html" target="_parent">06 复刻需求基线</a>。</p>
+</div>
+</body>
+</html>

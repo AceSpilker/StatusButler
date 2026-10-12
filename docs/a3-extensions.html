@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A3 · 扩展功能设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .ext{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .ext h3{margin:0 0 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .ext .meta{font-size:12px;color:var(--sub);margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A3 / Extension Design</div>
+  <h1>扩展功能设计：超出参考项目的能力</h1>
+  <p class="lede">以下 E1–E12 是为状态管家设计的<strong>原生扩展集</strong>——参考项目没有、但与其架构天然契合的新能力。每项给出交互设计、数据来源与工程/风险注记。<strong>不设优先级与阶段</strong>：这是一份平铺的扩展目录，逐项独立、任一项可砍可换；你后续加需求时（A4 登记），与某项相关的直接并入该项，无关的新开编号。</p>
+  <div class="callout c-info" style="background:#eef6f4;border:1px solid #c6e2dc;border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;color:#1c5a50">📌 <strong>全部扩展已完成深度设计</strong>（单一阶段、全量范围）：E1/E5/E6 → <a href="a8-slots-info.html" target="_parent">A8 信号槽与信息模块</a>；E2/E3/E7/E8/E9/E10 → <a href="a9-control-personalize.html" target="_parent">A9 系统控制与个性化</a>；E4 → <a href="a7-perf.html" target="_parent">A7 性能监控</a>；E11 → <a href="a5-thermal.html" target="_parent">A5 温度与风扇</a>；E12 → <a href="a6-widgets.html" target="_parent">A6 桌面小组件</a>。本页保留为速览目录。</div>
+
+  <div class="toc"><b>扩展目录</b>
+    <a href="#e1">E1 模块化信号槽（自定义第三个信号）</a>
+    <a href="#e2">E2 快捷动作中心</a>
+    <a href="#e3">E3 菜单栏整理</a>
+    <a href="#e4">E4 性能监控模块</a>
+    <a href="#e5">E5 天气与空气模块</a>
+    <a href="#e6">E6 日程倒数模块</a>
+    <a href="#e7">E7 图标主题与配置分享</a>
+    <a href="#e8">E8 iCloud 设置同步</a>
+    <a href="#e9">E9 自动化集成（URL Scheme / Shortcuts / CLI）</a>
+    <a href="#e10">E10 状态历史与统计</a>
+  </div>
+
+  <div class="ext" id="e1">
+    <h3>E1 · 模块化信号槽 <span class="badge b-blue">架构级</span></h3>
+    <div class="meta">改动面：图标管线 + 设置 + 弹层 ｜ 数据源：见槽位清单</div>
+    <p>把图标"下部音量区"升级为<strong>可插拔槽位</strong>：用户可在设置里把下部（或追加第四段）换成其他信号源，多个信号轮换显示或手动固定。这是把"状态管家"从三合一状态工具升级为<strong>个人状态工具箱</strong>的关键扩展，也为 A4 未来需求提供标准接入位。</p>
+    <ul>
+      <li><strong>内置槽位源</strong>：音量（默认）/ 时钟（时:分）/ 网速（实时 ↑↓）/ CPU 占用% / 内存占用% / 磁盘可用 / 电量循环详情 / 天气温度（联动 E5）/ 日程倒数（联动 E6）。</li>
+      <li><strong>槽位机制</strong>：槽位实现统一协议（标题 + 双行文本 + 0–4 级可视化值 + 图标符号 + 下钻页），新信号源只需实现协议即可进入图标与弹层——A4 新需求大多可以"以槽位形式"快速落地。</li>
+      <li><strong>轮换模式</strong>：固定单源 / 每 N 秒轮换 / 点击图标循环切换。</li>
+      <li><strong>数据源与频率</strong>：时钟每分钟对齐刷新；网速/CPU/内存 1–2s 采样（仅当选中该槽位时启动采样器，未选中不耗资源）；全部本地计算，无网络请求。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e2">
+    <h3>E2 · 快捷动作中心 <span class="badge b-orange">部分依赖系统限制</span></h3>
+    <div class="meta">改动面：弹层新分区 ｜ 数据源：系统 API / AppleScript / Shortcuts</div>
+    <p>弹层顶部增加"快捷动作"分区：一行大按钮，点击即切换系统开关，省去进系统设置的往返。</p>
+    <ul>
+      <li><strong>可用公开方式实现的</strong>：深色/浅色外观（AppleScript <code>tell app "System Events" to tell appearance preferences to set dark mode to …</code>，需辅助功能授权，或读 <code>AppleInterfaceStyle</code> + 引导用户）、蓝牙开关（与 S7 面板同源）、Wi-Fi 开关（S5 已有）、静音（CoreAudio）、输出设备切换（S6 已有）。</li>
+      <li><strong>无公开 API 的</strong>：勿扰 / 夜览 / 舞台调度——提供<strong>跳转深链</strong>到对应系统设置面板，而不是伪装开关（诚实降级）。</li>
+      <li><strong>委托 Shortcuts</strong>：动作面板支持把任意 macOS 快捷指令钉进来（<code>shortcuts run</code> 或 Shortcuts Events），用户已有的自动化直接复用。</li>
+      <li>按钮可自选、可排序；每个动作标注其权限需求。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e3">
+    <h3>E3 · 菜单栏整理 <span class="badge b-red">私有 API · 高风险高价值</span></h3>
+    <div class="meta">改动面：独立子系统 ｜ 数据源：NSStatusBar 私有视图树</div>
+    <p>Bartender/Hidden Bar 类能力：把其他 App 的菜单栏图标收纳进状态管家的弹层"收纳区"，点击展开可见、平时隐藏，保持菜单栏只有一两个图标——与"管家替您打点一切"的产品人设天然互补。</p>
+    <ul>
+      <li><strong>实现要点</strong>：遍历系统状态栏的私有视图层级取得各 <code>NSStatusItem</code> 的窗口引用，改变其宽度/可见性；需要每次 macOS 大版本回归验证。</li>
+      <li><strong>风险控制</strong>：独立模块（可整体摘除）+ 版本白名单（未验证的系统版本上自动禁用并提示）；绝不修改其他 App 状态，只做布局隐藏。</li>
+      <li><strong>交互</strong>：规则式（"总是隐藏 X""电量低于 20% 时显示"）+ 手动切换（点击状态管家图标两次 = 展开全部隐藏图标）。</li>
+      <li>此项为全目录中工程风险最高者，接受"砍掉"或"仅做已验证版本"的裁剪。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e4">
+    <h3>E4 · 性能监控模块 <span class="badge b-purple">深度设计已出（R-3）</span></h3>
+    <div class="meta">改动面：E1 槽位源 + 弹层分区 ｜ 数据源：host_processor_info / mach_vm_statistics / sysctl / IOReport</div>
+    <ul>
+      <li><strong>实时网速</strong>：上行/下行速率（按网卡分解：Wi-Fi/以太网/VPN 隧道），累计流量与历史。</li>
+      <li><strong>CPU</strong>：总占用 + 逐核网格 + Apple Silicon 大小核分组 + Top 5 进程榜。</li>
+      <li><strong>内存</strong>：用量分解（含 Wired/压缩/Swap）+ 系统内存压力三色表 + 进程榜；不做伪"内存清理"。</li>
+      <li><strong>GPU</strong>：使用率曲线（IOReport，机型差异见回退链）+ 联动 GPU 温度（A5）。</li>
+      <li><strong>采样纪律</strong>：仅"有人看"时采样（1s 可见 / 30s 落盘），全隐藏时零开销。<strong>完整设计见 <a href="a7-perf.html" target="_parent">A7 性能监控设计</a></strong>（PF-01~40）。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e5">
+    <h3>E5 · 天气与空气模块 <span class="badge b-orange">需要外部 API</span></h3>
+    <div class="meta">改动面：E1 槽位源 + 弹层分区 ｜ 数据源：定位（可选手动城市）+ 天气服务</div>
+    <ul>
+      <li><strong>图标槽位</strong>：温度 + 天气符号（晴/雨/雪，SF Symbols 自带全集）。</li>
+      <li><strong>弹层分区</strong>：今明预报、空气质量（AQI）卡片。</li>
+      <li><strong>网络纪律（对齐红线三）</strong>：天气请求仅 https、仅白名单气象域名、请求前解析并校验目标（拒绝私网/环回地址）；位置可改手动城市避免定位权限；数据 30 分钟缓存 + 按需刷新；无网络/失败静默显示"暂无"。</li>
+      <li>服务选型立项时定（如 Open-Meteo 免费无 Key 起步），供应商可替换。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e6">
+    <h3>E6 · 日程倒数模块 <span class="badge b-green">EventKit 权限</span></h3>
+    <div class="meta">改动面：E1 槽位源 + 弹层分区 ｜ 数据源：EventKit（仅读）</div>
+    <ul>
+      <li><strong>图标槽位</strong>："距下一件事 25 分"式单行倒数（可选只统计标注为"重要"的事件）。</li>
+      <li><strong>弹层分区</strong>：今日时间轴（未来 3 个事件 + 进行中的高亮）；点击事件打开日历。</li>
+      <li><strong>隐私</strong>：仅申请日历只读权限；标题在图标上只显示倒计时，标题仅弹层展示；可选择"只显示忙碌时段不含标题"模式。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e7">
+    <h3>E7 · 图标主题与配置分享 <span class="badge b-green">纯本地</span></h3>
+    <div class="meta">改动面：设置中心 ｜ 数据源：本地主题文件</div>
+    <ul>
+      <li><strong>主题文件</strong>：把 S9 外观类设置（尺寸/缩放/描边/颜色/分区编排）导出为单个 <code>.butler-theme</code> JSON（含版本号，带迁移）；双击导入或拖入设置窗口。</li>
+      <li><strong>内置主题库</strong>：随 App 附 6–8 套预设（极简 / 高对比 / 彩色 / 复古像素…）。</li>
+      <li><strong>分享</strong>：主题内容生成短码/文件，社区可流通；不含任何个人信息。</li>
+      <li>主题应用带实时预览与一键还原默认。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e8">
+    <h3>E8 · iCloud 设置同步 <span class="badge b-orange">CloudKit</span></h3>
+    <div class="meta">改动面：设置持久层 ｜ 数据源：CloudKit 私有库</div>
+    <ul>
+      <li>多台 Mac 同步全部设置与主题（E7），登录同一 Apple ID 自动生效。</li>
+      <li>CloudKit 私有数据库（用户自己的 iCloud 配额），App 无法读取他人数据；无服务器运营成本。</li>
+      <li>冲突策略：最后写入胜出 + 关键项（位置模式）可按设备独立。</li>
+      <li>完全可选，默认关；关闭后纯本地。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e9">
+    <h3>E9 · 自动化集成 <span class="badge b-green">公开机制</span></h3>
+    <div class="meta">改动面：App 生命周期层 ｜ 数据源：URL Scheme / App Shortcuts / CLI</div>
+    <ul>
+      <li><strong>URL Scheme</strong>：<code>butler://volume/up</code>、<code>butler://bluetooth/connect?device=AirPods</code>、<code>butler://panel/show</code> 等，动作与弹层按钮一一对应。</li>
+      <li><strong>App Shortcuts</strong>：核心动作注册进系统快捷指令（Siri / 快捷指令 App / 键盘快捷键可触发），零配置可用。</li>
+      <li><strong>CLI 薄封装</strong>：<code>statusbutler volume 50</code>、<code>statusbutler status --json</code>（输出当前快照 JSON，供脚本/状态栏工具消费）。</li>
+      <li>安全：URL Scheme 动作白名单化，拒绝带参数的危险操作（不提供任何"执行任意命令"面）。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e10">
+    <h3>E10 · 状态历史与统计 <span class="badge b-green">纯本地</span></h3>
+    <div class="meta">改动面：存储层新表 ｜ 数据源：自身监控数据落盘</div>
+    <ul>
+      <li><strong>电池健康曲线</strong>：每日一次记录容量/循环数，绘制长期走势（本地 SQLite，仅存数值无标识）。</li>
+      <li><strong>事件日志</strong>：Wi-Fi 断连/切换记录、蓝牙设备连接/断开记录、充电时段——帮你回答"刚才怎么断网了"这类问题；默认保留 30 天，可清空。</li>
+      <li><strong>弹层入口</strong>：电池详情页与网络详情页各带"历史"标签。</li>
+      <li>隐私：全部本地，永不导出，无遥测字段关联。</li>
+    </ul>
+  </div>
+
+  <div class="ext" id="e11">
+    <h3>E11 · 温度监测与风扇控制 <span class="badge b-purple">深度设计已出</span></h3>
+    <div class="meta">改动面：E1 槽位源 + 弹层新分区 + 特权 Helper ｜ 数据源：SMC（AppleSMC IOKit）</div>
+    <p>对标 TG Pro / Macs Fan Control：全传感器温度监测（CPU/GPU/电池/存储/掌托…）、风扇转速监测、手动恒速与温度→转速自定义曲线控制、温度警报与日志导出。读取无特权；Apple Silicon 上写风扇需 SMAppService 特权 Helper（键白名单）。<strong>完整功能与技术设计见 <a href="a5-thermal.html" target="_parent">A5 温度与风扇设计</a></strong>（TF-01~TF-30）。</p>
+  </div>
+
+  <div class="ext" id="e12">
+    <h3>E12 · 桌面小组件 <span class="badge b-purple">深度设计已出</span></h3>
+    <div class="meta">改动面：新 WidgetKit 扩展 target + 快照共享层 ｜ 数据源：主 App 快照文件</div>
+    <p>WidgetKit 桌面小组件（macOS 14 起摆桌面，13 放通知中心）：管家总览 / 温度 / 风扇 / 性能 / 日程 / 天气六族组件，交互式按钮（风扇模式、全速应急、静音）桌面直达，主题联动，节流 + 陈旧标注的刷新策略。<strong>完整设计见 <a href="a6-widgets.html" target="_parent">A6 桌面小组件设计</a></strong>（WG-01~06）。</p>
+  </div>
+
+  <h2>与复刻规格的关系</h2>
+  <table>
+    <tr><th>扩展</th><th>依赖的复刻能力（A2）</th><th>是否新增权限</th></tr>
+    <tr><td>E1 信号槽</td><td>S1 图标管线改造</td><td>随所选槽位</td></tr>
+    <tr><td>E2 动作中心</td><td>S5/S6/S7 已有开关能力</td><td>辅助功能（部分动作）</td></tr>
+    <tr><td>E3 菜单栏整理</td><td>—（独立子系统）</td><td>无（私有 API）</td></tr>
+    <tr><td>E4 性能监控</td><td>E1</td><td>无</td></tr>
+    <tr><td>E5 天气</td><td>E1</td><td>定位（可选）/ 网络</td></tr>
+    <tr><td>E6 日程倒数</td><td>E1</td><td>日历只读</td></tr>
+    <tr><td>E7 主题</td><td>S9 设置中心</td><td>无</td></tr>
+    <tr><td>E8 iCloud 同步</td><td>S9</td><td>iCloud（CloudKit）</td></tr>
+    <tr><td>E9 自动化</td><td>S3/S6 动作面</td><td>无</td></tr>
+    <tr><td>E10 历史</td><td>S4/S5 详情页</td><td>无</td></tr>
+    <tr><td>E11 温度与风扇</td><td>E1 槽位 / E10 历史 / E2 动作中心 / E7 主题</td><td>管理员（仅写风扇时，装 Helper）</td></tr>
+    <tr><td>E12 桌面小组件</td><td>E11 温控 / E4 性能 / E5 天气 / E6 日程 / E7 主题 / E9 深链</td><td>无</td></tr>
+  </table>
+  <div class="callout c-info">📌 每项扩展都遵守 A2·S12 红线：E5 的网络请求仅 https + 域名白名单 + 解析后 IP 校验；E3/E2 涉及私有 API 或辅助功能的部分全部"独立模块 + 可摘除 + 诚实降级"。</div>
+</div>
+</body>
+</html>

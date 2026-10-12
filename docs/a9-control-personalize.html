@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A9 · 系统控制与个性化设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .c-bad{background:#fdf0ee;border-color:#f5c9c4;color:#8c2d25}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A9 / Control &amp; Personalization（E2/E3/E7/E8/E9/E10 深度设计）</div>
+  <h1>系统控制、个性化与自动化</h1>
+  <p class="lede">快捷动作中心（E2）、菜单栏整理（E3）、主题系统（E7）、iCloud 同步（E8）、自动化集成（E9）、状态历史（E10）的完整功能与技术设计。</p>
+
+  <h2>一、E2 · 快捷动作中心（AC-01 ~ AC-05）</h2>
+  <div class="feat">
+    <h3>AC-01 面板形态</h3>
+    <ul>
+      <li>弹层顶部一行大按钮组（可多行），每动作 = 图标 + 名称 + 状态徽标（开/关/不可用灰显）；显隐与排序自定义。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>AC-02 内置动作清单（诚实分级）</h3>
+    <table>
+      <tr><th>动作</th><th>实现路线</th><th>权限</th></tr>
+      <tr><td>Wi-Fi 开关 / 蓝牙开关 / 静音 / 输出设备切换</td><td>复用 S5/S6/S7 已有通道（公开 API）</td><td>蓝牙（已有）</td></tr>
+      <tr><td>深色/浅色外观切换</td><td>读 <code>AppleInterfaceStyle</code> + AppleScript 写（需辅助功能授权，首次使用解释并引导）；授权拒绝则降级为深链系统设置</td><td>辅助功能（可选）</td></tr>
+      <tr><td>勿扰 / 夜览 / 舞台调度</td><td><strong>无公开 API，只做深链</strong>跳对应设置面板（不伪装开关）</td><td>无</td></tr>
+      <tr><td>风扇全速应急 / 恢复自动</td><td>联动 A5·TF-30</td><td>Helper（已装时）</td></tr>
+    </table>
+  </div>
+  <div class="feat">
+    <h3>AC-03~05 Shortcuts 钉选与治理</h3>
+    <ul>
+      <li>AC-03 浏览并钉选任意 macOS 快捷指令进面板（<code>shortcuts run</code> 执行，状态尽力显示）。</li>
+      <li>AC-04 每个动作标注权限需求；首次执行弹说明；动作失败静默提示不可用。</li>
+      <li>AC-05 动作与 E9 的 URL Scheme 命令<strong>同源定义</strong>（一套动作表喂三处：面板/URL/CLI）。</li>
+    </ul>
+  </div>
+
+  <h2>二、E3 · 菜单栏整理（MB-01 ~ MB-05）<span class="badge b-red">高风险 · 可整体关闭</span></h2>
+  <div class="feat">
+    <h3>MB-01~03 收纳模型与交互</h3>
+    <ul>
+      <li>MB-01 枚举系统状态栏其他 App 的 <code>NSStatusItem</code>（私有视图树），按规则把其宽度置 0（隐藏）或恢复；收纳清单显示名称 + 所属 App 图标。</li>
+      <li>MB-02 规则式触发："总是隐藏 X""仅电池低于 20% 显示 Y""按时间隐藏"；手动模式 = 点击状态管家图标两次临时展开全部。</li>
+      <li>MB-03 <strong>交互诚实设计</strong>：无法把其他 App 的菜单搬进管家弹层——点击收纳项 = 恢复该项原位供用户交互，闲置 5 秒后按规则重新隐藏（明示这一行为）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>MB-04~05 安全与版本治理</h3>
+    <ul>
+      <li>系统大版本白名单：每个 macOS 大版本实机回归后才启用；未验证版本自动禁用并提示。</li>
+      <li><strong>崩溃安全</strong>：隐藏状态不持久化跨登录会话——管家退出/崩溃后下次启动先恢复全部图标再应用规则（绝不"永久吞图标"）。</li>
+      <li>模块独立可摘除；设置中一键"恢复全部并关闭本功能"。</li>
+    </ul>
+  </div>
+
+  <h2>三、E7 · 图标主题与配置分享（TH-01 ~ TH-05）</h2>
+  <div class="feat">
+    <h3>TH-01~02 主题内容与格式</h3>
+    <ul>
+      <li>主题覆盖：外观类全部设置（尺寸/符号缩放/描边样式/状态颜色/阈值/分区编排/槽位选择/轮换周期）；<strong>不含</strong>隐私、网络、权限类配置。</li>
+      <li><code>.butler-theme</code> = JSON：<pre>{ "schemaVersion": 1,
+  "appearance": { "iconSize": …, "ringStyle": …, "colors": … },
+  "sections":  [ … ],
+  "slots":     { "footer": "netSpeed", "rotation": "5s" } }</pre>未知键忽略（向前兼容）+ 版本迁移函数；导入前 schema 校验与差异预览。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>TH-03~05 预设、导入导出、应用</h3>
+    <ul>
+      <li>内置 6 套预设：极简 / 高对比 / 彩色 / 暗夜 / 经典 Mac / 大字版。</li>
+      <li>双击导入（带预览确认）、拖入设置窗口、导出为文件；分享 = 文件直传，零个人信息。</li>
+      <li>应用带实时预览；一键还原默认；本机不支持的字段（如无温度传感器机型）提示跳过。</li>
+    </ul>
+  </div>
+
+  <h2>四、E8 · iCloud 设置同步（IC-01 ~ IC-04）<span class="badge b-gray">默认关</span></h2>
+  <ul>
+    <li>IC-01 范围：设置 + 主题（E7）；<strong>历史数据（E10）不同步</strong>（纯本地）。</li>
+    <li>IC-02 机制：CloudKit <strong>私有数据库</strong>（用户自己的 iCloud 配额，无服务器运营）；手动"立即同步"+可选自动。</li>
+    <li>IC-03 冲突：最后写入胜出，冲突时展示双方修改时间与设备名供选择；图标位置等设备相关项可设"按设备独立"。</li>
+    <li>IC-04 隐私：默认关闭；关闭后纯本地零云流量；CloudKit 状态异常静默降级为本地模式。</li>
+  </ul>
+
+  <h2>五、E9 · 自动化集成（AU-01 ~ AU-05）</h2>
+  <div class="feat">
+    <h3>AU-01 URL Scheme 命令表（<code>butler://</code>）</h3>
+    <pre>butler://panel/show | panel/thermal | panel/battery | panel/network
+butler://volume/up | volume/down | volume/mute | volume/set?value=50
+butler://bluetooth/connect?device=AirPods
+butler://fan/auto | fan/max | fan/rpm?value=4000        ← 同 A5 动作面
+butler://slot/cycle | theme/apply?name=极简</pre>
+    <ul><li>白名单校验：未知命令/非法参数直接拒绝并忽略（无报错弹窗，静默日志）；与 AC-05 动作表同源。</li></ul>
+  </div>
+  <div class="feat">
+    <h3>AU-02~03 App Shortcuts 与 CLI</h3>
+    <ul>
+      <li>AU-02 AppIntents 注册核心动作（音量、面板、全速应急、静音、槽位切换）→ Siri / 快捷指令 / 键盘快捷键零配置可用。</li>
+      <li>AU-03 <code>statusbutler</code> CLI（独立薄封装二进制，转发 URL Scheme 到主 App）：<code>status --json</code>（当前快照，供脚本消费）、<code>volume 50</code>、<code>fan auto</code>、<code>slot cycle</code>。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>AU-04~05 安全与文档</h3>
+    <ul>
+      <li>只读查询 + 白名单动作；<strong>无任意命令执行面</strong>；JSON 输出仅含状态字段（无个人信息/路径）。</li>
+      <li>设置页内置"命令速查"卡片（可复制）。</li>
+    </ul>
+  </div>
+
+  <h2>六、E10 · 状态历史与统计（HS-01 ~ HS-05）<span class="badge b-green">纯本地</span></h2>
+  <div class="feat">
+    <h3>HS-01~02 存储与采集</h3>
+    <ul>
+      <li>SQLite（应用支持目录）三张表：<code>metric_daily</code>（电池容量/循环数，每日一次）、<code>event_log</code>(Wi-Fi 断连与切换 / 充电起止 / 蓝牙连接 / 风扇模式变更 / 全部警报)、<code>traffic_hourly</code>（网速小时聚合）。</li>
+      <li>保留策略：事件 30 天、电池健康 365 天、流量 90 天；挂现有监控器推送落盘（30s 粗采样），<strong>不新增后台采样</strong>。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>HS-03~05 展示与隐私</h3>
+    <ul>
+      <li>展示：电池详情页健康曲线、网络详情页日/周流量柱状、独立"事件日志"页（按类型筛选/搜索/导出 CSV）。</li>
+      <li>隐私：全本地、不进遥测、一键清空；与 A5 温度历史、A7 性能历史同库同页风格。</li>
+    </ul>
+  </div>
+
+  <div class="callout c-info">📌 至此 <strong>A3 目录 E1~E12 全部扩展均有深度设计</strong>（E4→A7、E11→A5、E12→A6、其余→本页与 A8）。技术落位统一见 <a href="b1-tech.html" target="_parent">B1</a>；全功能索引见 <a href="a0-catalog.html" target="_parent">A0 功能总目录</a>。</div>
+</div>
+</body>
+</html>

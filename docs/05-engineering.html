@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>05 · 工程实践 — Status Trio 深度分析</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#2f6fed;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:2px}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef4fe;border-color:#cdddfb;color:#274a7e}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">05 / Engineering</div>
+  <h1>工程实践：构建、发布与协作规则</h1>
+  <p class="lede">这个仓库最有价值的部分之一不是功能代码，而是它把"个人项目"做出了产品级工程治理：CI 即验收、事故入档、静默退化全部变成脚本断言。复刻项目按此基线起步，可以省掉大量踩坑成本。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#agents">AGENTS.md：AI 协作规则（约 100 行军规）</a>
+    <a href="#spec">规格驱动开发：docs/superpowers/</a>
+    <a href="#release">发布流水线细节</a>
+    <a href="#contracts">契约脚本：27 个 scripts/ 的分类</a>
+    <a href="#quality">质量守门机制</a>
+    <a href="#copy">复刻项目建议裁剪清单</a>
+  </div>
+
+  <h2 id="agents">AGENTS.md：AI 协作规则</h2>
+  <p>作者把给 AI 编码智能体的约束固化在仓库根的 <code>AGENTS.md</code>，配合 <code>.agents/skills/</code> 下 25 个 vendored 技能与 <code>skills-lock.json</code> 锁定文件。核心规则摘要：</p>
+  <table>
+    <tr><th style="width:220px">规则域</th><th>内容要点</th></tr>
+    <tr><td>CI 工具链匹配（最高优先级）</td><td>本地编译通过不算数，<code>macos-26 / Xcode 26.6 / Swift 6.3.3</code> 通过才算；SDK 必须 ≥ 26（旧 SDK 会静默产出旧外观，构建脚本与 <code>verify-platform-version.sh</code> 双保险）</td></tr>
+    <tr><td>提交前验证</td><td><code>swift test</code> + <code>swift build -c release</code>；触碰 actor 隔离 / <code>@MainActor</code> / deinit / SwiftUI 绑定 / 泛型 / <code>Bundle.module</code> 的改动，额外跑一次不发布的 release workflow 预检</td></tr>
+    <tr><td>Swift 6 兼容军规</td><td>禁用 <code>isolated deinit</code> 实验特性；不把 actor 隔离方法直接当函数值传；禁 <code>weak let</code>；<code>Bundle.module</code> 资源名/大小写不可假设（要同时尝试规范与小写 lproj 名）；编译器崩溃（IRGenRequest / SmallVector / signal 6）必须收敛代码模式而非绕过</td></tr>
+    <tr><td>失败登记</td><td>每次 CI 失败必须记入 <code>docs/swift-ci-compatibility.md</code>：run ID、失败阶段、根因、修复、验证结果</td></tr>
+    <tr><td>图标对等</td><td>菜单栏与 Dock 图标必须同一改动内同步（设置派生 → 订阅 → 缓存 key → 渲染 → 测试五处）；菜单栏专属设置需文档+测试声明豁免</td></tr>
+    <tr><td>Issue #30 看护</td><td>触碰图标渲染/几何/映射的改动必须跑 <code>Issue30WiFiAlignmentTests</code>；两条居中回归不许删除或放宽</td></tr>
+    <tr><td>系统设置路由</td><td>设置控件必须落到对应面板自己的 Settings 扩展（Wi-Fi 齿轮 → Wi-Fi 面板而非 Network 面板）；首个路由决定目的地；验证方法是看加载的扩展（pgrep ExtensionKit）而非 open 的退出码；发布后发现的问题要先用 strings 读二进制里的路由顺序再下结论</td></tr>
+    <tr><td>发布规则</td><td>版本/构建号必须显式且递增；Release 正文 = 英文在上中文在下（en.md + zh-Hans.md 组合）；Sparkle appcast 每语言独立 title/description 且 <code>xml:lang</code> 显式、en 必须第一；Developer ID 签名版不许附 quarantine 指引，仅 Ad-hoc 回退时附；发布永远走 workflow，不手工</td></tr>
+    <tr><td>变更流</td><td>小改动直进 main；大改动/跨子系统走 PR；PR 本身不触发 CI（release workflow 只在 tag/手动时跑），所以验证规则与路径无关一律执行</td></tr>
+  </table>
+  <div class="callout c-info">💡 这份 AGENTS.md 对我们的复刻项目几乎可以"抄了就用"：把工具链版本、对等原则、发布纪律替换成自己的即可。把 AI 协作规则放进仓库而不是聊天记录，是保证多次会话之间工程质量一致的关键。</div>
+
+  <h2 id="spec">规格驱动开发：docs/superpowers/</h2>
+  <p><code>docs/superpowers/specs/</code> 保存 31 份按日期编号的设计规格，<code>docs/superpowers/plans/</code> 保存实施计划。翻开目录能看到完整的产品演化路径：</p>
+  <pre>2026-09-12 status-trio-design            ← 起点设计（v1 快照，注明"非当前行为"）
+2026-09-13 app-icon / battery-popup / multilingual / popup-wifi / settings
+2026-09-14 performance-optimization      ← 兜底轮询调整为现状
+2026-09-15 dock-icon-display / popup-item-visibility
+2026-09-17 natural-volume-scrolling
+2026-09-19 macos-26-sdk-migration / multilingual-appcast-notes
+2026-09-20 bluetooth-battery-default / charging-effects
+2026-09-21 bluetooth-device-list / wifi-switching-deferred
+2026-09-22 bluetooth-device-actions
+2026-09-23 audio-input-controls
+2026-09-24 continuous-dock-charging-animation
+2026-09-25 popover-resource-optimization
+2026-09-28 battery-action-targets
+2026-09-29 direct-ddc-display-volume / external-display-volume
+2026-09-30 v2-presentation-state
+2026-10-01 app-telemetry-integration-v2 / icon-architecture-cleanup-review
+2026-10-03 apple-watch-battery
+2026-10-05 nearby-ble-allowlist
+2026-10-06 apple-device-battery
+2026-10-08 macos13-compatibility-reference</pre>
+  <ul>
+    <li>每份规格标注"这是当时的设计快照，当前行为以××为准"——设计文档不追溯修改，用引用链保持真实历史；</li>
+    <li>除规格外，<code>docs/</code> 还有 30+ 份"调查报告"（investigation）：如 <code>popover-glass-investigation.md</code>、<code>wifi-personal-hotspot-investigation.md</code>、<code>nearby-ble-battery-observations.md</code>，记录踩坑过程与结论；</li>
+    <li><code>docs/</code> 顶层另有行为矩阵（<code>presentation-state-behavior-matrix.md</code>）、已知限制、隐私遥测说明、图标指南、路线文档。</li>
+  </ul>
+
+  <h2 id="release">发布流水线细节</h2>
+  <table>
+    <tr><th>环节</th><th>实现</th><th>守护</th></tr>
+    <tr><td>触发</td><td>push tag <code>v*</code> 或 workflow_dispatch（version/build/tag/publish/notarize 参数）</td><td>并发组防重入；发布/公证需要 GitHub Environment <code>distribution</code>（Secrets 门禁）</td></tr>
+    <tr><td>构建</td><td>swift build -c release → build-app.sh 组 .app（Info.plist、资源、helper）</td><td>SDK ≥ 26 断言；macOS 13 契约测试 ×4（bundle / deployment / Sparkle 契约 / Sparkle 元数据）</td></tr>
+    <tr><td>签名公证</td><td>有 Secrets → Developer ID 签名 + notarytool 公证 + stapler；无 → Ad-hoc 回退</td><td><code>test-release-notarization.sh</code>；工作流结果中必须确认公证与装订而非"配置了就算"</td></tr>
+    <tr><td>打包</td><td>DMG + SHA-256 校验和</td><td>README 教用户比对校验和</td></tr>
+    <tr><td>Release 正文</td><td><code>release-notes/&lt;ver&gt;/</code> 每语言一个 md（en 与 zh-Hans 必需且构成 GitHub 正文；publish=true 时必须 12 语言全）</td><td><code>validate-appcast-notes.sh</code> 校验覆盖率与 %VERSION%/%BUILD% 占位</td></tr>
+    <tr><td>appcast</td><td><code>update-appcast.rb</code> 生成 EdDSA 签名多语言 appcast 条目并提交</td><td>最低系统版本测试；xml:lang 显式；en 第一（Sparkle 兜底语义）</td></tr>
+    <tr><td>迭代数据</td><td><code>analytics-snapshot.yml</code> 每日把 GitHub 指标写入 <code>analytics/</code></td><td><code>snapshot-analytics.py</code></td></tr>
+  </table>
+
+  <h2 id="contracts">契约脚本：27 个 scripts/ 的分类</h2>
+  <table>
+    <tr><th>类别</th><th>脚本</th><th>断言什么</th></tr>
+    <tr><td>构建</td><td>build-app.sh / build-worktree.sh / build-mobile-battery-helper.sh</td><td>组 .app；按分支派生开发版 Bundle ID 可并行安装；按 manifest 锁定 commit 编译 6 个 C 库</td></tr>
+    <tr><td>平台契约</td><td>verify-platform-version.sh / test-macos13-bundle-contract / test-macos13-deployment-contract / test-macos13-sparkle-contract / test-macos13-sparkle-metadata / test-appcast-minimum-system-version</td><td>SDK ≥ 26；bundle 结构 / 最低部署版本 / Sparkle 版本契约不被悄悄破坏</td></tr>
+    <tr><td>helper 契约</td><td>check-mobile-battery-dependency / check-mobile-battery-rpaths / test-mobile-battery-clang-version / test-mobile-battery-helper / test-mobile-battery-rpaths / verify-mobile-battery-bundle / otool-dependencies.py / otool-rpaths.py / test-otool-dependencies</td><td>静态库依赖、RPATH、clang 版本、bundle 完整性——第三方 C 库链路全部可执行验证</td></tr>
+    <tr><td>质量</td><td>test.sh / check-forbidden-patterns.sh / generate-volume-feedback-sound.py / probe-network-link.swift</td><td>带过滤的测试入口；源码禁用模式扫描；音量反馈音生成；链路探测工具</td></tr>
+    <tr><td>发布</td><td>release.sh / update-appcast.rb / validate-appcast-notes.sh / test-release-notarization.sh / snapshot-analytics.py</td><td>发布编排、appcast 生成与校验、公证验证、指标快照</td></tr>
+  </table>
+
+  <h2 id="quality">质量守门机制</h2>
+  <ul>
+    <li><strong>测试 / 源码 ≈ 1.4 : 1</strong>：231 个测试文件覆盖从纯逻辑到像素指纹；</li>
+    <li><strong>守卫测试</strong>（<code>ForbiddenPatternGuardTests</code> + shell 扫描）：把"代码里不许出现 X"变成 CI 断言——例如禁止危险的私有调用模式扩散；</li>
+    <li><strong>回归看护</strong>：真实事故（Issue #30 居中、#40 SDK 外观）转化为永不删除的回归测试 + AGENTS.md 条款——问题只发生一次；</li>
+    <li><strong>NOTICE + LICENSE 合规</strong>：Apache-2.0 主协议 + 第三方 LGPL 库清单随仓库分发；</li>
+    <li><strong>隐私文档</strong>：<code>docs/privacy-telemetry.md</code> 公开遥测全字段、同意机制与保留策略，并有 <code>telemetry-verification.md</code> 验证记录。</li>
+  </ul>
+
+  <h2 id="copy">复刻项目建议裁剪清单</h2>
+  <table>
+    <tr><th>✅ 第一天就该有</th><th>🔄 后期再补</th><th>❌ 个人复刻可不抄</th></tr>
+    <tr>
+      <td>AGENTS.md（换成自己的工具链与规则）<br>swift test + release build 提交前验证<br>组合根 + 协议化监控器<br>渲染缓存 + 快照相等性<br>发布走 workflow（哪怕只产 DMG）</td>
+      <td>像素指纹回归（首个动画功能出现时）<br>12 语言 appcast（先 en + zh-Hans）<br>每日 analytics 快照<br>worktree 并行开发版</td>
+      <td>macOS 13 四重契约测试（若最低版本更高）<br>libimobiledevice 全套 helper 契约脚本（若砍掉该功能）<br>遥测体系（无运营诉求时）<br>25 个 vendored AI 技能库</td>
+    </tr>
+  </table>
+  <p class="lede" style="margin-top:26px">→ 下一页 <a href="06-requirements.html" target="_parent">06 复刻需求基线</a>：把全部分析收敛为带优先级、可勾选、可追加的需求文档。</p>
+</div>
+</body>
+</html>

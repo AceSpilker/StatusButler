@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A8 · 信号槽与信息模块设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A8 / Slots &amp; Info Modules（E1 / E5 / E6 深度设计）</div>
+  <h1>信号槽与信息模块：天气 · 日程 · 槽位系统</h1>
+  <p class="lede">E1 模块化信号槽（架构级）、E5 天气与空气、E6 日程倒数的完整功能与技术设计。至此 A3 目录中每个扩展都有深度设计页。</p>
+
+  <h2>一、E1 · 模块化信号槽（SL-01 ~ SL-06）</h2>
+  <div class="feat">
+    <h3>SL-01 槽位架构 <span class="badge b-blue">架构级</span></h3>
+    <ul>
+      <li>图标下部区域升级为<strong>可插拔槽位</strong>；支持追加<strong>第四段</strong>（图标增高一档，菜单栏/Dock 自适应）。</li>
+      <li><strong>槽位协议</strong>：<code>id / title / scene()（图标可视化）/ panel()（弹层分区）/ start() / stop()（按需启停）</code>——新信号源实现协议即同时进入图标、弹层、组件三端。</li>
+      <li><strong>槽位注册表</strong>：内置源 + （预留）外部源注册接口；设置中的槽位选择器从注册表生成。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>SL-02 内置槽位源（首发 9 个）</h3>
+    <table>
+      <tr><th>槽位源</th><th>图标显示</th><th>数据源/频率</th></tr>
+      <tr><td>音量（默认）</td><td>点/弧 + 静音态</td><td>CoreAudio（S6）</td></tr>
+      <tr><td>时钟</td><td>HH:mm 等宽</td><td>本地时钟，整分对齐刷新</td></tr>
+      <tr><td>网速</td><td>↑↓ 简写速率</td><td>A7·PF-01，2s</td></tr>
+      <tr><td>CPU 占用</td><td>百分比 + 分级点</td><td>A7·PF-10，2s</td></tr>
+      <tr><td>内存压力</td><td>三色档位点</td><td>A7·PF-20，5s</td></tr>
+      <tr><td>温度</td><td>最高温数字 + 热度点</td><td>A5·TF-01，5s</td></tr>
+      <tr><td>天气温度</td><td>温度 + 天气符号</td><td>E5，30min</td></tr>
+      <tr><td>日程倒数</td><td>"25分" 简写</td><td>E6，事件驱动</td></tr>
+      <tr><td>磁盘可用</td><td>剩余 GB</td><td>URL.resourceValues，5min</td></tr>
+    </table>
+  </div>
+  <div class="feat">
+    <h3>SL-03 可视化规范与轮换</h3>
+    <ul>
+      <li>统一可视化语法：<strong>0–4 分级点 + SF Symbol + 可选等宽数字</strong>；颜色语义全 App 统一（绿正常 / 黄警示 / 红紧急，同 A5 温度、A4 电池阈值）。</li>
+      <li><strong>轮换模式</strong>：固定单源 / 每 N 秒轮换（3/5/10s）/ 点击图标循环切换；轮换淡入淡出 150ms。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>SL-04~06 设置与工程</h3>
+    <ul>
+      <li>SL-04 槽位选择器：源列表 + 实时预览卡片；第四段独立开关；每源可配显隐细节（如时钟 24h 制）。</li>
+      <li>SL-05 调度纪律：<code>SlotScheduler</code>（actor）——槽位被选中/弹层可见/组件启用才 <code>start()</code>，全部不可见即 <code>stop()</code>（延续 B1 能效纪律）。</li>
+      <li>SL-06 工程落位：<code>SlotSceneState</code> 进入 <code>IconSceneState.Footer</code>（或新增 Fourth 段），渲染/缓存/测试与现有管线同构。</li>
+    </ul>
+  </div>
+
+  <h2>二、E5 · 天气与空气模块（WX-01 ~ WX-06）</h2>
+  <div class="feat">
+    <h3>WX-01 数据与定位</h3>
+    <ul>
+      <li>内容：当前温度 + 天气现象（SF Symbols 全套符号）+ 今明两日预报 + AQI（空气质量指数与等级色）。</li>
+      <li><strong>位置默认手动城市</strong>（搜索/拼音匹配常见城市内置表），可选开启系统定位（申请定位权限，仅在用户明确开启时）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>WX-02 展示三端</h3>
+    <ul>
+      <li>槽位：温度 + 符号（SL-02）；弹层分区：今明卡片 + AQI + 最近更新时间 + 手动刷新；A6 组件 WG-06。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>WX-03 网络纪律（对齐红线三） <span class="badge b-red">安全设计</span></h3>
+    <ol>
+      <li>请求<strong>仅 https</strong>；目标域名为编译期白名单（默认仅所选气象服务域）；</li>
+      <li>发请求前解析 DNS 并校验目标 IP：<strong>拒绝环回、私网、链路本地与保留地址</strong>；不跟随跨域重定向；</li>
+      <li>30 分钟缓存 + 槽位/面板/组件可见才刷新；失败静默显示"暂无数据 + 上次时间"，绝不重试风暴。</li>
+    </ol>
+  </div>
+  <div class="feat">
+    <h3>WX-04~06 服务与单位</h3>
+    <ul>
+      <li>WX-04 <code>WeatherProvider</code> 协议抽象：默认 Open-Meteo（免 Key）起步；带 Key 服务（和风天气等）作为可选配置项，Key 存 Keychain（此处属于用户主动存自己的密钥，不违红线一——红线禁的是 Wi-Fi 密码）。</li>
+      <li>WX-05 单位：°C/°F、风速单位、AQI 标准切换。</li>
+      <li>WX-06 睡眠唤醒按数据陈旧度决定是否立即刷新。</li>
+    </ul>
+  </div>
+
+  <h2>三、E6 · 日程倒数模块（CAL-01 ~ CAL-05）</h2>
+  <div class="feat">
+    <h3>CAL-01~02 数据与展示</h3>
+    <ul>
+      <li>槽位：下一件事倒计时（<code>25分</code> 简写；超过 1 小时显示 <code>1.5时</code>；无日程显示当日日期或留空可配）。</li>
+      <li>弹层分区：今日时间轴——进行中事件高亮 + 未来 3 件（时间/标题/剩余）；点击事件 <strong>深链打开"日历"App 对应事件</strong>。</li>
+      <li>仅统计未来 24 小时内、非全天事件（全天事件默认不倒数，可配）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>CAL-03 隐私模式（默认最保守）</h3>
+    <ul>
+      <li><strong>默认只显示"忙碌 · 还剩 25 分"，不含标题</strong>；显示标题需在设置中明确开启；锁屏/截图场景同样遵守（槽位永远只有倒计时数字）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>CAL-04~05 刷新与范围</h3>
+    <ul>
+      <li>CAL-04 <code>EKEventStore</code> 变更通知推送 + 60 秒兜底重算；权限被拒 → 占位提示与设置引导，其余功能不受影响。</li>
+      <li>CAL-05 日历多选筛选：默认全部本机日历；iCloud/Exchange 日历同样支持（系统层面透明）。</li>
+    </ul>
+  </div>
+
+  <div class="callout c-info">📌 联动全景：SL 槽位是三端展示底座（图标/弹层/A6 组件）；WX/CAL 是首批"信息型"槽位源；网络纪律与隐私模式分别对齐 A2·S12 红线三与 A6 安全边界。工程落位见 <a href="b1-tech.html" target="_parent">B1 监控层 SlotSource 系列</a>。</div>
+</div>
+</body>
+</html>

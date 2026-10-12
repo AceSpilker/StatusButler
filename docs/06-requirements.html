@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>06 · 复刻需求基线 — Status Trio 深度分析</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#2f6fed;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef4fe;border-color:#cdddfb;color:#274a7e}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .c-idea{background:#f0eafb;border-color:#ddd0f5;color:#4b3585}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .ms{border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin:12px 0;background:#fff}
+  .ms b{display:flex;align-items:center;gap:8px}
+  .empty-row td{height:34px;background:#fff !important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">06 / Requirements Baseline</div>
+  <h1>复刻需求基线：做一款"类 Status Trio"的软件</h1>
+  <p class="lede">本文把前五页的分析收敛为一份<strong>可执行的产品需求基线（PRD）</strong>：定位、范围、功能需求（FR-编号）、非功能需求（NFR）、技术决策、里程碑。文末的<strong>需求登记表</strong>是预留的扩展位——你后续要加的需求，直接登记到那里，再回填对应 FR 编号即可。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#pos">1. 产品定位与目标用户</a>
+    <a href="#scope">2. 版本范围（P0–P3 定义）</a>
+    <a href="#fr">3. 功能需求（FR-01 ~ FR-40）</a>
+    <a href="#nfr">4. 非功能需求（NFR）</a>
+    <a href="#constraint">5. 技术约束与关键决策</a>
+    <a href="#ms">6. 里程碑规划</a>
+    <a href="#register">7. 需求登记表（后续追加区）</a>
+  </div>
+
+  <h2 id="pos">1. 产品定位与目标用户</h2>
+  <table>
+    <tr><th style="width:150px">项</th><th>内容</th></tr>
+    <tr><td>一句话定位</td><td>macOS 原生状态聚合工具：把 Wi-Fi、电池、音量（及可选的蓝牙/外设信号）压缩进一个自绘图标，在菜单栏/Dock 常驻，弹层可下钻细节并直接操作。</td></tr>
+    <tr><td>差异化假设</td><td>① 一图标多信号，比系统默认省空间；② 弹层即操作中心（连蓝牙、切输出设备、看电池详情）不用进系统设置；③ 外观高度可定制；④（可选）外设电量聚合（AirPods / iPhone / Watch）。</td></tr>
+    <tr><td>目标用户</td><td>Mac 重度用户：菜单栏空间敏感者、多设备用户（AirPods/外接显示器/iPhone）、喜欢定制系统状态呈现的高级用户。</td></tr>
+    <tr><td>非目标用户</td><td>需要企业管控/MDM 的组织用户；非 macOS 用户。</td></tr>
+    <tr><td>产品红线</td><td>不读写 Wi-Fi 密码、不碰钥匙串；不写 SMC/不越权控制充电；隐私权限全部按需最小化申请；遥测默认关闭（若做）。</td></tr>
+  </table>
+
+  <h2 id="scope">2. 版本范围</h2>
+  <table>
+    <tr><th style="width:110px">优先级</th><th>定义</th><th>对应 Status Trio 能力</th></tr>
+    <tr><td><span class="badge b-red">P0 · MVP</span></td><td>没有它产品不成立</td><td>三合一图标（菜单栏）、基础弹层、设置中心骨架、事件驱动刷新</td></tr>
+    <tr><td><span class="badge b-orange">P1 · 完整版</span></td><td>对标 1.0 的完整体验</td><td>Dock 双开、下钻页（Wi-Fi/电池详情）、音量操作、蓝牙面板与电量</td></tr>
+    <tr><td><span class="badge b-blue">P2 · 打磨</span></td><td>体验与工程化增强</td><td>充电动画、图标替换/变色、音频输入、VPN/以太网、更新机制、引导</td></tr>
+    <tr><td><span class="badge b-gray">P3 · 差异化</span></td><td>重资产可选支线</td><td>附近 BLE 电量、AirPods 聆听模式、DDC 显示器音量、iDevice 电量</td></tr>
+  </table>
+
+  <h2 id="fr">3. 功能需求</h2>
+  <p>状态列约定：<span class="badge b-green">基线</span> = 已纳入本基线；<span class="badge b-gray">可选</span> = 实现与否待定（登记表决定）。</p>
+
+  <h3>3.1 状态图标（FR-01 ~ FR-06）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-01</td><td>三合一图标：上部电池（百分比/充电/低电色）、中部 Wi-Fi 信号（含关闭/未连接/无网/热点等特殊状态）、下部音量（点阵或弧线两种样式）</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-02</td><td>自绘渲染引擎：矢量几何坐标系 + 系统符号，明暗菜单栏自动适配，符号墨水居中补偿</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-03</td><td>图标外观定制：尺寸、符号缩放（100–180%）、环形描边样式、状态颜色、低电阈值</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-04</td><td>显示位置：仅菜单栏 / 仅 Dock / 双开；Dock 背景跟随系统或固定明暗透明；菜单栏与 Dock 渲染同源</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-05</td><td>充电动画：外环呼吸效果，遵循"减弱动态效果"，显示器睡眠时停止</td><td><span class="badge b-blue">P2</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-06</td><td>蓝牙音频播放时：中部图标替换为设备专属符号、音量指示变蓝、"网络错误优先"开关</td><td><span class="badge b-blue">P2</span></td><td><span class="badge b-green">基线</span></td></tr>
+  </table>
+
+  <h3>3.2 弹层面板（FR-07 ~ FR-11）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-07</td><td>左键弹层：电池/网络/音量概要行（主数值 + 副标题状态）；点击面板外或 Esc 关闭；多屏锚定正确</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-08</td><td>分区编排：每个分区可显隐、可拖动排序</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-09</td><td>下钻导航：Wi-Fi 行 → 附近网络 + 链路详情页；电池行 → 电池详情页；带返回</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-10</td><td>右键菜单：设置、版本、退出（菜单栏与 Dock 通用）</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-11</td><td>弹层资源策略：打开期间才加载重资源（蓝牙扫描/链路读取），关闭即释放；数据 500ms 防抖</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+  </table>
+
+  <h3>3.3 电池域（FR-12 ~ FR-13）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-12</td><td>电池概要：百分比、充电中/已接电源、充满时间、低电模式状态、无电池设备表现</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-13</td><td>电池详情页：适配器功率/电压/电流、循环次数、健康度；优化充电暂停状态 → 跳系统电池设置（<strong>不越权干预充电</strong>）</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+  </table>
+
+  <h3>3.4 Wi-Fi / 网络域（FR-14 ~ FR-17）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-14</td><td>当前网络：SSID（按需申请定位授权）、信号分级、频段；特殊状态（热点/临时/共享/有线）识别</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-15</td><td>附近网络列表 + 信号强度；点击网络 → 打开系统 Wi-Fi 设置（<strong>不代填密码</strong>）</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-16</td><td>链路详情：IP、信道、频段、协商速率、受限网络标记；弹层打开且当前为有线时才读取</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-17</td><td>弹层内开关 Wi-Fi；VPN 状态行与以太网链路行</td><td><span class="badge b-blue">P2</span></td><td><span class="badge b-green">基线</span></td></tr>
+  </table>
+
+  <h3>3.5 音频域（FR-18 ~ FR-21）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-18</td><td>音量状态：等级、静音、默认输出设备名称 + 设备分类图标</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-19</td><td>弹层内音量操作：滑杆、滚轮滚动（作用域可选整面板/仅控件、自然方向可选）、静音切换、反馈音</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-20</td><td>输出设备列表：点击切换默认输出；排序/数量可配；音频输入设备控制（默认关）</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-21</td><td>外接显示器 DDC 音量直控（私有 I2C 通道，独立模块可摘除）</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+  </table>
+
+  <h3>3.6 蓝牙域（FR-22 ~ FR-25）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-22</td><td>蓝牙面板（默认关，开启时申请蓝牙权限）：配对设备列表 + 连接状态 + 电量；AirPods 左/右/盒三分电量</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-23</td><td>设备操作：点击连接/断开；HID 设备（键鼠/手柄）行内二次确认；幽灵设备隐藏/恢复；设备排序与最大可见数</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-24</td><td>电量多源合并：系统配对报告为主、配件电源报告补缺，事件驱动刷新</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-25</td><td>附近 BLE 设备电量扫描（默认关、允许列表、仅面板可见时扫描）；AirPods 聆听模式切换</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+  </table>
+
+  <h3>3.7 外设与扩展（FR-26 ~ FR-27）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-26</td><td>USB 连接的 iPhone/iPad/Apple Watch 电量读取（libimobiledevice Helper 路线）</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+    <tr><td>FR-27</td><td>（复刻扩展位）自定义信号槽：允许用户选择中部图标来源（如时钟/日历/自定义符号）——Status Trio 未做，属我们的候选差异点</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+  </table>
+
+  <h3>3.8 设置 / 系统 / 发布（FR-28 ~ FR-40）</h3>
+  <table>
+    <tr><th style="width:70px">编号</th><th>需求</th><th style="width:64px">优先级</th><th style="width:60px">状态</th></tr>
+    <tr><td>FR-28</td><td>设置中心：分区导航 + 即时预览卡片；全部设置持久化（UserDefaults），含取值范围校验与跨版本迁移</td><td><span class="badge b-red">P0</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-29</td><td>首次启动引导："认识你的图标"图文页；可从设置重开</td><td><span class="badge b-blue">P2</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-30</td><td>本地化框架：至少 中/英；字符串外置；App 语言可独立于系统语言（目标：12 语言看运营）</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-31</td><td>开机自启动（现代 LoginItem API）+ 单实例锁</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-32</td><td>自动更新：Sparkle 2 + EdDSA 签名 appcast（或初期仅 GitHub Releases 手动）</td><td><span class="badge b-blue">P2</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-33</td><td>发布流水线：GitHub Actions 全自动出包（DMG + SHA-256），Developer ID 签名 + 公证（有证书时）</td><td><span class="badge b-blue">P2</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-34</td><td>遥测（可选、默认关、匿名心跳）——初期建议不做，登记表决定</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+    <tr><td>FR-35</td><td>无障碍：图标与面板的 Accessibility 标签</td><td><span class="badge b-blue">P2</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-36</td><td>系统设置深跳：跳 Wi-Fi 面板 / 电池面板等，路由必须落到目标面板自己的 Settings 扩展，并有路由测试</td><td><span class="badge b-orange">P1</span></td><td><span class="badge b-green">基线</span></td></tr>
+    <tr><td>FR-37</td><td>（复刻扩展位）菜单栏额外能力：如快捷开关飞行模式类动作面板——Status Trio 刻意未做，候选差异点</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+    <tr><td>FR-38</td><td>（复刻扩展位）图标主题/皮肤市场或导入导出配置方案</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+    <tr><td>FR-39</td><td>（复刻扩展位）Windows / 跨平台版本——重大范围变更，需专项立项</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+    <tr><td>FR-40</td><td>（复刻扩展位）CLI / URL Scheme / Shortcuts 集成，供自动化调用</td><td><span class="badge b-gray">P3</span></td><td><span class="badge b-gray">可选</span></td></tr>
+  </table>
+
+  <h2 id="nfr">4. 非功能需求</h2>
+  <table>
+    <tr><th style="width:90px">编号</th><th style="width:120px">类别</th><th>要求</th></tr>
+    <tr><td>NFR-01</td><td>能效</td><td>事件驱动优先；兜底轮询默认 15s（5–60s 可调）；界面不可见时 Wi-Fi/音量降为每 4 tick 一次；显示器睡眠跳过轮询但设自愈上限；定时器带宽容忍</td></tr>
+    <tr><td>NFR-02</td><td>性能</td><td>图标状态不变不重绘（快照相等性 + 渲染缓存 key）；高频刷新合并（coalescer）；弹层打开首帧 &lt; 100ms（数据防抖）</td></tr>
+    <tr><td>NFR-03</td><td>隐私红线</td><td>不读 Wi-Fi 密码/不碰钥匙串；定位与蓝牙权限按需最小化；遥测默认关且字段最小化；权限用途在引导与设置中说明</td></tr>
+    <tr><td>NFR-04</td><td>兼容</td><td>最低 macOS 13（或 14，立项定）；Universal 双架构；Ventura 真机验证后再宣称支持</td></tr>
+    <tr><td>NFR-05</td><td>可靠性</td><td>单实例；崩溃不影响系统状态（只读系统为主）；DDC/私有通道失败静默降级到不可用而非崩溃</td></tr>
+    <tr><td>NFR-06</td><td>可测试</td><td>监控器协议化可注入；映射层纯函数；核心路径单元测试覆盖；图标几何/像素级回归（从 M2 起引入）</td></tr>
+    <tr><td>NFR-07</td><td>可维护</td><td>组合根装配；AGENTS.md 工程规则随仓库；设计文档快照制（不追溯修改）；菜单栏/Dock 对等原则</td></tr>
+    <tr><td>NFR-08</td><td>安全</td><td>更新源签名（EdDSA）；发布物 SHA-256；不引入未审计的网络回调（App 内请求仅限更新与可选遥测，且仅 https）</td></tr>
+  </table>
+
+  <h2 id="constraint">5. 技术约束与关键决策（立项即定）</h2>
+  <table>
+    <tr><th>决策点</th><th>推荐</th><th>理由 / 备注</th></tr>
+    <tr><td>语言/并发</td><td>Swift 6 严格并发，核心 Store <code>@MainActor</code></td><td>与蓝本一致，状态一致性收益大；注意 deinit 隔离限制</td></tr>
+    <tr><td>UI 结构</td><td>AppKit 壳（NSStatusItem/NSPopover）+ SwiftUI 内容 + CoreGraphics 自绘图标</td><td>菜单栏工具事实标准</td></tr>
+    <tr><td>包管理</td><td>SPM（可 选 Xcode 工程托管）</td><td>依赖极少，SPM 足够</td></tr>
+    <tr><td>架构</td><td>四层：Monitoring（协议化）→ Store（单快照）→ Presentation（纯映射）→ UI</td><td>直接复刻蓝本分层（见 04 页）</td></tr>
+    <tr><td>运行时依赖</td><td>Sparkle 2（P2 引入）</td><td>唯一必要三方依赖；其余自研</td></tr>
+    <tr><td>私有 API 政策</td><td>DDC 独立 target 封装，可整体摘除；不引入其他私有符号</td><td>控制风险面</td></tr>
+    <tr><td>iDevice 电量</td><td>P3 独立里程碑；依赖锁定 manifest + 契约脚本照抄蓝本</td><td>最重的支线</td></tr>
+    <tr><td>分发</td><td>Developer ID 自分发（非 MAS）</td><td>MAS 沙盒会砍掉 DDC/Helper 等能力</td></tr>
+  </table>
+
+  <h2 id="ms">6. 里程碑规划（建议）</h2>
+  <div class="ms"><b>M1 · 骨架跑通 <span class="badge b-red">P0</span></b>
+    <p>组合根 + 单实例 + 菜单栏图标渲染三信号（电池/Wi-Fi/音量基础态）+ 事件驱动与兜底轮询 + 基础弹层（概要行 + 右键菜单）+ 设置骨架（外观 4 项）+ 单元测试基建。<br><em>验收：菜单栏图标随系统状态实时变化；空闲 CPU 占用可忽略。</em></p>
+  </div>
+  <div class="ms"><b>M2 · 完整弹层 <span class="badge b-orange">P1</span></b>
+    <p>分区编排与排序 + Wi-Fi 附近网络/链路详情 + 电池详情页 + 音量操作（滑杆/滚动/设备切换）+ 设置中心完整化 + 中英本地化 + 登录启动。<br><em>验收：不看系统设置即可完成 FR-09/13/15/16/19/20 全部操作。</em></p>
+  </div>
+  <div class="ms"><b>M3 · 蓝牙域 <span class="badge b-orange">P1</span></b>
+    <p>蓝牙面板（授权流程）+ 配对设备管理 + 多源电量合并 + AirPods 分体电量 + 菜单栏/Dock 双开与 Dock 渲染。<br><em>验收：弹层内完成连接/断开；Dock 图标与菜单栏像素一致。</em></p>
+  </div>
+  <div class="ms"><b>M4 · 打磨与发布 <span class="badge b-blue">P2</span></b>
+    <p>充电动画 + 蓝牙图标替换/变色 + VPN/以太网行 + 首次引导 + 无障碍 + Sparkle 更新 + GitHub Actions 出包（DMG+签名公证）+ 像素回归测试。<br><em>验收：对外可发布的 1.0。</em></p>
+  </div>
+  <div class="ms"><b>M5 · 差异化支线 <span class="badge b-gray">P3</span></b>
+    <p>按登记表决策：DDC 显示器音量 / 附近 BLE 电量 / 聆听模式 / iDevice 电量 / 自定义信号槽等。<br><em>验收：逐项独立验收，任一支线可砍。</em></p>
+  </div>
+
+  <h2 id="register">7. 需求登记表（后续追加区）</h2>
+  <div class="callout c-idea">
+    📝 <strong>使用方法</strong>：你后续提出的新需求，按行登记到下表（编号从 R-1 递增），标注来源日期、优先级建议与所属功能域；讨论定稿后，把定稿内容回填到上面对应章节（新增 FR-xx 编号，或并入现有 FR）。状态流转：待评审 → 已采纳（进基线）/ 已拒绝（留档）。
+  </div>
+  <table>
+    <tr><th style="width:56px">编号</th><th>需求描述</th><th style="width:90px">登记日期</th><th style="width:70px">优先级建议</th><th style="width:90px">所属域</th><th style="width:80px">状态</th></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr class="empty-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+  <div class="callout c-warn">
+    ⚠️ 登记新需求时请同步检查三条红线（见第 1 节）：是否触碰 Wi-Fi 密码 / 是否需要越权系统写入 / 是否新增隐私权限。触碰任一条的需求建议直接标记"已拒绝（红线）"。
+  </div>
+
+  <p class="lede" style="margin-top:30px">— 全部分析文档完 · 返回 <a href="index.html" target="_parent">文档中心</a> —</p>
+</div>
+</body>
+</html>

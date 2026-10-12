@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B1 · 技术与架构方案 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.4px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .stack{display:flex;flex-direction:column;gap:8px;margin:18px 0}
+  .layer{border-radius:12px;padding:12px 18px;border:1px solid var(--line);background:var(--soft)}
+  .layer b{font-size:14.5px}
+  .layer .d{font-size:12.5px;color:var(--sub);margin-top:2px}
+  .l1{border-left:5px solid #8e44ad}.l2{border-left:5px solid #2f6fed}.l3{border-left:5px solid #0a7d6f}.l4{border-left:5px solid #e67e22}
+  .arrow{text-align:center;color:#9aa3af;font-size:15px;line-height:1}
+  .pipe{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0}
+  .pipe .node{background:#eef6f4;border:1px solid #c6e2dc;color:#1c5a50;border-radius:8px;padding:6px 12px;font-size:12.8px;font-weight:600}
+  .pipe .sep{color:#9aa3af;font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">B1 / Tech &amp; Architecture</div>
+  <h1>技术与架构方案</h1>
+  <p class="lede">状态管家的技术蓝图：选型决策、仓库与模块结构、四层架构、数据流与能效策略、图标管线（含 E1 槽位扩展）、工程纪律与发布链。本文整合自对参考项目的全套源码分析（附录 03/04/05/07 页），改写为<strong>面向本项目的落地方案</strong>；深挖实现细节时回查附录对应页。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#stack">1. 技术选型（定案）</a>
+    <a href="#repo">2. 仓库与包结构</a>
+    <a href="#arch">3. 四层架构与目录映射</a>
+    <a href="#flow">4. 数据流与能效策略</a>
+    <a href="#icon">5. 图标管线与槽位扩展（E1）</a>
+    <a href="#rules">6. 工程纪律（AGENTS 规则）</a>
+    <a href="#release">7. 测试与发布链</a>
+  </div>
+
+  <h2 id="stack">1. 技术选型（定案）</h2>
+  <table>
+    <tr><th style="width:160px">决策点</th><th>选型</th><th>说明</th></tr>
+    <tr><td>语言 / 并发</td><td>Swift 6 严格并发；核心对象 <code>@MainActor</code></td><td>菜单栏 App 的状态一致性收益大；deinit 隔离限制按参考项目军规规避</td></tr>
+    <tr><td>UI 结构</td><td>AppKit 壳（NSStatusItem / NSPopover / NSMenu / 激活策略）+ SwiftUI 内容（弹层/设置/引导）+ CoreGraphics 自绘图标</td><td>参考项目验证过的混合模式（附录 03）</td></tr>
+    <tr><td>包管理</td><td>Swift Package Manager，纯脚本组装 .app</td><td>依赖极少，SPM 足够；构建/测试/打包不依赖 xcodebuild，CLT 即可全流程（本机已验证，附录 07）</td></tr>
+    <tr><td>部署目标</td><td>macOS 13（Ventura）起，Universal（arm64 + x86_64）</td><td>与参考一致；Ventura 真机验证后才对外宣称支持</td></tr>
+    <tr><td>运行时依赖</td><td>Sparkle 2（更新）为唯一 SPM 依赖</td><td>EdDSA 签名 appcast</td></tr>
+    <tr><td>系统框架</td><td>AppKit / SwiftUI / IOKit / CoreWLAN / Network / SystemConfiguration / CoreAudio / AudioToolbox / IOBluetooth / CoreBluetooth / CoreLocation / ServiceManagement / Security / CryptoKit / CoreDisplay / QuartzCore</td><td>用途映射表见附录 03</td></tr>
+    <tr><td>私有 API 政策</td><td>DDC I2C 一处（OG-FR-151）+ <strong>风扇域 SMC 写入一处（E11，含 SMAppService 特权 Helper，键白名单 FS!/F{n}Md，见 A5）</strong>，各自独立 target/模块，可摘除；不引入其他未公开符号；充电/电源域 SMC 永不写入（红线二）</td><td>红线四 + 修订版红线二</td></tr>
+    <tr><td>iDevice 电量</td><td>锁定 commit 源码构建 libimobiledevice 栈为独立 Helper（OG-FR-170）</td><td>契约脚本照抄参考项目（附录 05）</td></tr>
+    <tr><td>分发</td><td>GitHub Releases + DMG；Developer ID 签名/公证待办（账号）；不上 MAS（沙盒会砍 DDC/Helper）</td><td>附录 07 T3</td></tr>
+    <tr><td>本地化</td><td>首发 zh-Hans + en，.lproj 外置，结构支持任意扩充</td><td>—</td></tr>
+  </table>
+
+  <h2 id="repo">2. 仓库与包结构</h2>
+  <pre>mactool/
+├── docs/                     ← 本文档中心（已就绪）
+└── statusbutler/             ← 本项目 Swift Package
+    （参考源码克隆于仓库外 ../reference/status-trio，不入库）
+    ├── Package.swift         swift-tools-version:6.0 · platforms:[.macOS(.v13)]
+    ├── Support/              Info.plist（LSUIElement 等）、图标资源、依赖 manifest
+    ├── scripts/              build-app.sh / test.sh / release.sh / 契约脚本
+    ├── release-notes/&lt;ver&gt;/  zh-Hans.md + en.md
+    ├── Sources/
+    │   ├── StatusButler/          executable：main.swift（7 行）→ AppDelegate
+    │   ├── StatusButlerCore/      全部业务（四层，见下）
+    │   ├── StatusButlerWidgets/   WidgetKit 扩展 target（组装入 PlugIns/，见 A6）
+    │   └── DDCPrivateAPI/        C 头文件 target（IOAVService I2C，独立可摘）
+    └── Tests/StatusButlerCoreTests/ 单元/映射/像素回归</pre>
+  <p>Bundle ID <code>com.linzhongyang.statusbutler</code>；单实例锁、登录项、设置迁移都按它绑定，确定后不再改。</p>
+
+  <h2 id="arch">3. 四层架构与目录映射</h2>
+  <p>沿用参考项目验证过的单向依赖分层（附录 04），目录按本项目命名：</p>
+  <div class="stack">
+    <div class="layer l1"><b>① Monitoring 监控层</b> · <code>StatusButlerCore/Monitoring/</code>
+      <div class="d">每信号一个监控器，全部协议化（<code>any BatteryMonitoring</code>…），可注入假实现测试。含：<code>BatteryMonitor</code>(IOKit) / <code>WiFiMonitor</code>(CoreWLAN) / <code>ConnectionMonitor</code>(NWPath) / <code>VPNProbe</code> / <code>VolumeMonitor</code>(CoreAudio) / <code>InputMonitor</code> / <code>BluetoothDeviceController</code>(IOBluetooth+配件电源) / <code>NearbyBLEScanner</code>(CoreBluetooth) / <code>MobileBatteryHelperReader</code>(iDevice) / E11 新增 <code>ThermalController</code>(AppleSMC 读温度与转速) + <code>FanControlEngine</code>(纯函数曲线引擎) + 特权 Helper(SMAppService，仅风扇键白名单，见 <a href="a5-thermal.html" target="_parent">A5</a>) / E1 新增 <code>SlotSource</code> 系列（Clock/NetRate/CPU/Memory/GPU…设计见 <a href="a7-perf.html" target="_parent">A7</a>）</div>
+    </div>
+    <div class="arrow">▲ 只产出状态值</div>
+    <div class="layer l2"><b>② Store 状态仓库层</b> · <code>Store/StatusStore.swift</code> + <code>Models/</code>
+      <div class="d"><code>@MainActor ObservableObject</code>，聚合为单一 <code>StatusSnapshot</code>（Equatable：快照相等 = 图标不变）；弹层专用旁路状态（VPN/受限网络/可见性）独立 <code>@Published</code> 不进快照。子控制器：电池详情 / Wi-Fi 网络 / 主链路 / 蓝牙 / 移动电池 / 聆听模式 / <strong>槽位调度器（E1）</strong>。</div>
+    </div>
+    <div class="arrow">▲ 纯映射，无系统调用</div>
+    <div class="layer l3"><b>③ Presentation 展示映射层</b> · <code>Presentation/</code>（Icon + Panel）
+      <div class="d">图标侧：<code>IconSceneMapper</code> → <code>IconSceneState</code>（外环/中心/底部三段；<strong>底部段在 E1 下由槽位协议供给</strong>）；面板侧：<code>PanelMapper</code> → 分区 ViewModel。纯函数，测试直接覆盖。</div>
+    </div>
+    <div class="arrow">▲ 只消费场景状态</div>
+    <div class="layer l4"><b>④ UI 层</b> · <code>UI/</code> + <code>App/</code>
+      <div class="d">StatusBarController（菜单栏壳）/ PopoverView（SwiftUI 内容）/ Settings/（S9 设置中心）/ Icon/（渲染器+缓存）；App/ 放生命周期（激活策略、Dock 点击、登录项、单实例、Sparkle、充电效果时钟、动作中心 E2）。</div>
+    </div>
+  </div>
+  <p>横向模块：<code>Audio/</code>（CoreAudio+DDC 封装）、<code>Localization/</code>、<code>Telemetry/</code>（OG-FR-201，默认关）。组合根 <code>AppEnvironment.live()</code> 手工装配全部依赖——main 极薄，AppDelegate 只管生命周期。</p>
+
+  <h2 id="flow">4. 数据流与能效策略</h2>
+  <div class="pipe">
+    <span class="node">系统事件推送</span><span class="sep">＋</span>
+    <span class="node">兜底轮询 15s</span><span class="sep">→</span>
+    <span class="node">Monitors</span><span class="sep">→</span>
+    <span class="node">StatusStore</span><span class="sep">→</span>
+    <span class="node">@Published snapshot</span><span class="sep">→</span>
+    <span class="node">IconSceneMapper</span><span class="sep">→</span>
+    <span class="node">渲染器 ×2</span>
+  </div>
+  <p>能效纪律（具名常量 + 注释故事，照抄参考项目的推导）：</p>
+  <ul>
+    <li>电池每 tick 刷新（画在图标上不能陈旧）；Wi-Fi/音量<strong>仅界面不可见时每第 4 tick</strong>刷（推送丢失看门狗）；</li>
+    <li>显示器睡眠跳过轮询，但最多连跳 20 次（防唤醒通知丢失冻结读数的自愈上限）；</li>
+    <li>定时器宽容 = 间隔 1/5（不要求 CPU 精确唤醒）；弹层打开 500ms 防抖合并；</li>
+    <li><strong>E1 槽位采样器按需启停</strong>：仅选中该槽或弹层可见时 1s 采样，其余时间零开销；</li>
+    <li>设置订阅一律 <code>removeDuplicates()</code>，防回写回环。</li>
+  </ul>
+
+  <h2 id="icon">5. 图标管线与槽位扩展（E1）</h2>
+  <pre>StatusSnapshot ─┐
+Settings(外观) ─┴→ IconSceneMapper → IconSceneState
+                                       │ OuterRing（外环/充电呼吸）
+                                       │ Center（Wi-Fi 或蓝牙音频符号）
+                                       │ Footer（音量 或 槽位源可视化 ← E1）
+                 ┌─────────────────────┴────────────────────┐
+                 ▼                                          ▼
+      StatusIconRenderer(菜单栏)                 DockIconRenderer(+背景)
+                 │                                          │
+      渲染缓存（场景 key 相等不重绘）              渲染缓存
+                 └──────── 刷新合并（coalescer）────────────┘
+
+E1 槽位协议（新）：
+protocol SlotSource {
+  var id: String; var title: String
+  func scene() -> SlotSceneState        // 图标可视化：0–4级 + 符号 + 双行文本
+  func panel() -> SlotPanelState        // 弹层分区内容
+  func start()/stop()                   // 按需采样启停
+}</pre>
+  <ul>
+    <li>120×120 几何坐标系等比缩放；SF Symbols <strong>墨水居中补偿</strong>从第一天就做（参考项目 Issue #30 的教训，两条回归测试看护）；</li>
+    <li>菜单栏/Dock 同源渲染，任何图标改动两端同步（工程铁律，见下）；</li>
+    <li>充电动画独立时间线系统（Event → Timeline → Phase → 帧缓存），尊重减弱动态与显示器睡眠。</li>
+  </ul>
+
+  <h2 id="rules">6. 工程纪律（AGENTS 规则）</h2>
+  <p>项目根建 <code>AGENTS.md</code>（AI 协作与人工变更共同遵守），首批条款直接继承参考项目的有效实践（附录 05），替换为本项目参数：</p>
+  <ol>
+    <li><strong>CI 即验收</strong>：本地过 ≠ 能合并；提交前 <code>swift test</code> + <code>swift build -c release</code>；触碰 actor 隔离/SwiftUI 绑定/资源加载的改动，额外跑一次不发布的 release workflow 预检。</li>
+    <li><strong>SDK ≥ 26</strong>：构建脚本与 <code>verify-platform-version.sh</code> 双保险，旧 SDK 直接失败（防静默旧外观）。</li>
+    <li><strong>两端对等</strong>：图标渲染或图标设置的任何改动，菜单栏与 Dock 同一变更内完成（设置派生→订阅→缓存 key→渲染→测试五处同步）。</li>
+    <li><strong>事故入档</strong>：每次 CI 失败登记 <code>docs/ci-compatibility.md</code>（run、根因、修复、验证）；真实事故转化为永不删除的回归测试。</li>
+    <li><strong>设置面板路由</strong>：深跳必须落到目标面板自己的 Settings 扩展；验证看加载的扩展而非 open 退出码；路由测试钉死顺序。</li>
+    <li><strong>红线四条</strong>（A2·S12）写进 AGENTS 与守卫扫描（<code>check-forbidden-patterns</code>）：禁密码/钥匙串、禁越权写入、私有 API 白名单仅 DDC。</li>
+    <li><strong>发布纪律</strong>：版本/构建号显式递增；Release 正文 zh-Hans + en；appcast 每语言独立节点、en 第一；Developer ID 版不附 quarantine 指引。</li>
+    <li><strong>设计文档快照制</strong>：规格不追溯修改，行为变更新开日期文档并在旧文档顶部声明"以××为准"。</li>
+  </ol>
+
+  <h2 id="release">7. 测试与发布链</h2>
+  <ul>
+    <li><strong>测试体系</strong>：监控器协议化注入假实现（单元层）；映射层纯函数直测；图标几何/像素指纹回归（首个动画功能起引入）；本地化 parity（en vs zh-Hans）；守卫测试扫红线模式。目标：测试代码 ≥ 业务代码（参考项目 1.4:1）。</li>
+    <li><strong>发布流水线</strong>：GitHub Actions（<code>release.yml</code>，tag/手动触发）＝ swift test + release build → SDK 断言 → .app 组装（+Helper 若启用）→ 签名/公证（有 Secrets 时 Developer ID，否则 Ad-hoc 回退）→ DMG + SHA-256 → Release（zh-Hans+en 正文）→ appcast 生成与校验。契约脚本：SDK 版本、Sparkle 元数据、最低系统版本、Helper RPATH/依赖。</li>
+    <li><strong>测试框架决策</strong>：本项目测试采用 <strong>Swift Testing</strong>（<code>import Testing</code>，已实测在 swiftly 工具链下无需 Xcode 完整运行），不照搬参考项目的 XCTest（XCTest 只随完整 Xcode 提供）。测试风格对齐参考项目的分层思路：协议注入假实现的单元层 + 纯函数映射直测 + 图标几何/像素指纹回归 + 本地化 parity + 红线守卫扫描。</li>
+    <li><strong>本机就绪度</strong>：编译链已实测通过（swiftly Swift 6.4，25.5s 全量构建）；测试链已实测通过（Swift Testing 无 Xcode 运行）；gh 已装待登录——见附录 07 状态表。</li>
+  </ul>
+  <div class="callout c-info">📌 深挖参考实现时的对照路径：系统框架用途 → 附录 <a href="03-techstack.html" target="_parent">03</a>；分层细节与能效常量推导 → <a href="04-architecture.html" target="_parent">04</a>；CI/发布/契约脚本全解 → <a href="05-engineering.html" target="_parent">05</a>；工具环境 → <a href="07-devtools.html" target="_parent">07</a>。</div>
+</div>
+</body>
+</html>

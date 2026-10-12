@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>状态管家 StatusButler · 项目文档中心</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --side:#ffffff; --ink:#1a1d21; --sub:#5c6470;
+    --brand:#0a7d6f; --brand-ink:#fff; --line:#e4e7ec; --hover:#e8f4f2;
+    --code:#eef1f6;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    background:var(--bg); color:var(--ink); display:flex; flex-direction:column; overflow:hidden;
+  }
+  header{
+    height:52px; background:#10201d; color:#fff; display:flex; align-items:center;
+    padding:0 18px; gap:12px; flex-shrink:0;
+  }
+  header .logo{
+    width:27px;height:27px;border-radius:8px;flex-shrink:0;
+    background:radial-gradient(circle at 30% 30%,#2fd4b5,#0a7d6f 60%,#075e54);
+    display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;font-weight:700;
+  }
+  header h1{font-size:15px;font-weight:600;letter-spacing:.3px}
+  header .tag{
+    font-size:11px;color:#9db8b3;border:1px solid #2c4640;border-radius:20px;
+    padding:2px 10px;margin-left:4px;
+  }
+  header .ext{margin-left:auto;font-size:12px}
+  header .ext a{color:#9db8b3;text-decoration:none;margin-left:14px}
+  header .ext a:hover{color:#fff}
+  .shell{flex:1;display:flex;min-height:0}
+  nav{
+    width:252px;background:var(--side);border-right:1px solid var(--line);
+    padding:18px 12px;overflow-y:auto;flex-shrink:0;
+  }
+  nav .group{font-size:11px;font-weight:700;color:#9aa3af;letter-spacing:1px;margin:16px 10px 6px;text-transform:uppercase}
+  nav a{
+    display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;
+    color:var(--ink);text-decoration:none;font-size:13.5px;margin-bottom:2px;
+    border:1px solid transparent;
+  }
+  nav a .n{
+    width:22px;height:22px;border-radius:6px;background:var(--code);color:var(--sub);
+    font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  nav a:hover{background:var(--hover)}
+  nav a.active{background:var(--hover);border-color:#b9dfd8;color:var(--brand);font-weight:600}
+  nav a.active .n{background:var(--brand);color:#fff}
+  nav .foot{margin-top:22px;padding:12px 10px;font-size:11.5px;color:#9aa3af;line-height:1.7;border-top:1px solid var(--line)}
+  main{flex:1;min-width:0;position:relative;background:var(--bg)}
+  iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .hamburger{display:none}
+  @media (max-width:860px){
+    nav{position:absolute;left:0;top:0;bottom:0;z-index:30;transform:translateX(-100%);transition:.2s;box-shadow:0 0 30px rgba(0,0,0,.15)}
+    nav.open{transform:none}
+    .hamburger{display:inline-flex;background:none;border:1px solid #2c4640;color:#cfe3df;border-radius:7px;padding:4px 9px;font-size:14px;cursor:pointer}
+  }
+</style>
+</head>
+<body>
+<header>
+  <button class="hamburger" onclick="document.querySelector('nav').classList.toggle('open')">☰</button>
+  <div class="logo">管</div>
+  <h1>状态管家 StatusButler</h1>
+  <span class="tag">macOS 状态聚合工具箱 · 项目文档 v1.1</span>
+  <div class="ext">
+    <a href="https://github.com/lingyired/status-trio" target="_blank" rel="noopener">参考仓库 ↗</a>
+  </div>
+</header>
+<div class="shell">
+  <nav id="nav">
+    <div class="group">产品设计</div>
+    <a href="a0-catalog.html" target="content" class="active"><span class="n">A0</span>功能总目录 ★</a>
+    <a href="a1-brand.html" target="content"><span class="n">A1</span>品牌与命名</a>
+    <a href="a2-features.html" target="content"><span class="n">A2</span>完整功能规格</a>
+    <a href="a3-extensions.html" target="content"><span class="n">A3</span>扩展功能设计</a>
+    <a href="a4-register.html" target="content"><span class="n">A4</span>需求登记表</a>
+    <a href="a5-thermal.html" target="content"><span class="n">A5</span>温度与风扇设计</a>
+    <a href="a6-widgets.html" target="content"><span class="n">A6</span>桌面小组件设计</a>
+    <a href="a7-perf.html" target="content"><span class="n">A7</span>性能监控设计</a>
+    <a href="a8-slots-info.html" target="content"><span class="n">A8</span>信号槽与信息模块</a>
+    <a href="a9-control-personalize.html" target="content"><span class="n">A9</span>系统控制与个性化</a>
+    <a href="a10-landscape.html" target="content"><span class="n">A10</span>竞品版图与候选功能</a>
+    <a href="a11-power-display-audio.html" target="content"><span class="n">A11</span>电池显示音频增强</a>
+    <a href="a12-productivity-platform.html" target="content"><span class="n">A12</span>效率与平台扩展</a>
+    <div class="group">技术方案</div>
+    <a href="b1-tech.html" target="content"><span class="n">B1</span>技术与架构方案</a>
+    <div class="group">附录 · 参考源码分析</div>
+    <a href="01-overview.html" target="content"><span class="n">01</span>Status Trio 概览</a>
+    <a href="02-features.html" target="content"><span class="n">02</span>参考功能全景</a>
+    <a href="03-techstack.html" target="content"><span class="n">03</span>参考技术栈</a>
+    <a href="04-architecture.html" target="content"><span class="n">04</span>参考架构与数据流</a>
+    <a href="05-engineering.html" target="content"><span class="n">05</span>参考工程实践</a>
+    <a href="06-requirements.html" target="content"><span class="n">06</span>早期需求草稿(已并入A2)</a>
+    <a href="07-devtools.html" target="content"><span class="n">07</span>开发工具清单</a>
+    <div class="foot">
+      项目根：mactool/<br>
+      参考源码：../reference/status-trio（仓库外）<br>
+      本套文档：docs/（v1.1 · 定名状态管家 · 2026-10-12）
+    </div>
+  </nav>
+  <main>
+    <iframe id="frame" name="content" src="a0-catalog.html" title="文档内容"></iframe>
+  </main>
+</div>
+<script>
+  // 同步高亮 + hash 路由；纯本地文件操作，不发起任何网络请求
+  var links = document.querySelectorAll('nav a[href]');
+  function mark(href){
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href') === href);
+    });
+  }
+  links.forEach(function(a){
+    a.addEventListener('click', function(){
+      mark(a.getAttribute('href'));
+      document.querySelector('nav').classList.remove('open');
+    });
+  });
+  var frame = document.getElementById('frame');
+  frame.addEventListener('load', function(){
+    try{
+      var doc = frame.contentDocument;
+      if(doc && doc.location && doc.location.pathname){
+        var name = doc.location.pathname.split('/').pop();
+        mark(name);
+        if(history.replaceState) history.replaceState(null,'','#'+name.replace('.html',''));
+        doc.title = doc.title || name;
+      }
+    }catch(e){/* 跨域时忽略 */}
+  });
+  if(location.hash){
+    var want = location.hash.replace('#','') + '.html';
+    links.forEach(function(a){
+      if(a.getAttribute('href') === want) a.click();
+    });
+  }
+</script>
+</body>
+</html>

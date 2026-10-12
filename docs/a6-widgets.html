@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A6 · 桌面小组件设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .wg{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin:14px 0}
+  .wgcard{border:1px dashed #b9c4cf;border-radius:14px;padding:14px 16px;background:var(--soft)}
+  .wgcard b{display:block;font-size:14px}
+  .wgcard .size{font-size:11.5px;color:var(--sub)}
+  .wgcard .demo{margin-top:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A6 / Desktop Widgets（E12 深度设计）</div>
+  <h1>桌面小组件：把状态放到桌面上</h1>
+  <p class="lede">状态管家的第 12 号扩展（E12）：用 WidgetKit 提供<strong>桌面小组件</strong>——温度、风扇、三合一状态、性能等模块信息常驻桌面，不用点开菜单栏弹层。登记于 <a href="a4-register.html" target="_parent">A4 R-2</a>。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#platform">1. 平台事实（先懂规则再设计）</a>
+    <a href="#widgets">2. 小组件家族设计（WG-01~06）</a>
+    <a href="#interact">3. 交互式控制（桌面直达操作）</a>
+    <a href="#data">4. 数据供给与刷新策略（核心工程问题）</a>
+    <a href="#build">5. 构建与工程落位</a>
+    <a href="#risk">6. 风险与边界</a>
+  </div>
+
+  <h2 id="platform">1. 平台事实（先懂规则再设计）</h2>
+  <table>
+    <tr><th>事实</th><th>对设计的影响</th></tr>
+    <tr><td>桌面小组件自 <strong>macOS 14（Sonoma）</strong>起支持；macOS 13 上小组件只能放在通知中心侧栏</td><td>部署目标 macOS 13：小组件功能随系统自适应（13 通知中心 / 14+ 桌面、叠放、交互），不需要分版本开发两套</td></tr>
+    <tr><td>小组件由<strong>独立扩展进程</strong>渲染，不能直接读主 App 内存，也不能常驻刷新</td><td>主 App 把最新快照写入<strong>共享快照文件</strong>；扩展按时间线（TimelineProvider）取数据渲染</td></tr>
+    <tr><td>刷新受<strong>系统预算</strong>控制（WidgetCenter.reloadTimelines 不能无限调）</td><td>见第 4 节的节流策略：目标"App 运行时 15–60 秒级更新"，不是毫秒级仪表盘</td></tr>
+    <tr><td>小组件 <strong>不能要任何权限</strong>（弹不出授权框）</td><td>只展示主 App 已合法拿到的数据；温度/风扇/电池/性能全满足</td></tr>
+    <tr><td>交互式按钮（macOS 14+ AppIntent）可在组件内直接执行简单动作</td><td>风扇模式切换 / 静音 / 全速应急可"桌面直达"，复杂操作深链进弹层</td></tr>
+  </table>
+
+  <h2 id="widgets">2. 小组件家族设计（WG-01~06）</h2>
+  <p>尺寸约定：<span class="badge b-gray">S</span> 小（2×2）· <span class="badge b-gray">M</span> 中 · <span class="badge b-gray">L</span> 大 · <span class="badge b-gray">XL</span> 特大（仅 macOS）。同一模块从小到大渐进展示更多信息。</p>
+  <div class="wg">
+    <div class="wgcard"><b>WG-01 管家总览卡</b><span class="size">S / M</span>
+      <div class="demo">🔋 87% · 📶 Wi‑Fi<br>🔊 ▮▮▮▯ 60% · 🔥 78°</div>
+      菜单栏三合一图标的桌面版：S 四格状态；M 加风扇 RPM 与最高温来源。最常用的默认推荐。</div>
+    <div class="wgcard"><b>WG-02 温度卡</b><span class="size">S / M / L</span>
+      <div class="demo">CPU 78° ▓▓▓▓░<br>GPU 64° ▓▓▓░░<br>最高 82° · 封装</div>
+      S：最高温大字 + 热度色；M：CPU/GPU 双列迷你条；L：全传感器分组列表（联动 A5）。温度超阈值整卡红色描边。</div>
+    <div class="wgcard"><b>WG-03 风扇卡</b><span class="size">S</span>
+      <div class="demo">左 2450 / 右 2470 RPM<br>模式：曲线 · 平衡</div>
+      各风扇当前转速 + 当前模式徽标（系统/恒速/曲线），转速条按 min–max 区间着色。</div>
+    <div class="wgcard"><b>WG-04 性能卡</b><span class="size">S / M / L</span>
+      <div class="demo">CPU 32% ▁▂▃▂<br>MEM 12.4/36 GB<br>NET ↑ 2.1 MB/s</div>
+      E4 性能模块的桌面版：S 三行数；M 加 60 秒迷你走势；L 完整三图。</div>
+    <div class="wgcard"><b>WG-05 日程卡</b><span class="size">S / M</span>
+      <div class="demo">下一场 14:00<br>评审会 · 还有 25 分</div>
+      E6 的桌面版：S 下一件事倒数；M 今日时间轴三行。</div>
+    <div class="wgcard"><b>WG-06 天气卡</b><span class="size">S / M</span>
+      <div class="demo">☀️ 26° 晴<br>明天 18–27° · AQI 45</div>
+      E5 的桌面版（若启用天气模块）。</div>
+  </div>
+  <ul>
+    <li><strong>空态设计</strong>：对应模块未启用时显示"管家提示：在设置中开启温度/天气模块"占位卡，不空白。</li>
+    <li><strong>主题联动（E7）</strong>：组件配色跟随所选主题；支持系统三种着色模式（原色/柔和/单色）与深浅外观自适应。</li>
+    <li><strong>数字等宽</strong>：温度/RPM/百分比用等宽数字（tabular figures），刷新时不跳宽。</li>
+  </ul>
+
+  <h2 id="interact">3. 交互式控制（桌面直达操作）</h2>
+  <table>
+    <tr><th>组件内动作（macOS 14+）</th><th>实现</th><th>低版本（macOS 13）</th></tr>
+    <tr><td>风扇模式切换（系统⇄恒速⇄曲线）</td><td>AppIntent ToggleIntent → 写共享命令文件 + Darwin 通知唤醒主 App 执行（写 SMC 只在主 App/Helper 进程发生，扩展进程绝不碰 SMC）</td><td>按钮降级为深链：点击打开主 App 弹层风扇页</td></tr>
+    <tr><td>一键全速应急 / 恢复自动</td><td>同上，联动 A5·TF-30 应急动作</td><td>深链</td></tr>
+    <tr><td>静音切换 / 音量步进</td><td>AppIntent → 主 App 执行 CoreAudio 操作（复用 E9 动作白名单）</td><td>深链</td></tr>
+    <tr><td>查看详情</td><td>widgetURL 深链 <code>butler://panel/thermal</code> 等直达弹层对应分区</td><td>同样支持</td></tr>
+  </table>
+  <div class="callout c-info">安全边界：小组件扩展进程<strong>只读共享文件、只写命令文件</strong>，一切实际系统操作（SMC 写、音量控制）由主 App/特权 Helper 执行——权限与红线治理（A5·第 4 节）不因组件入口而放宽。</div>
+
+  <h2 id="data">4. 数据供给与刷新策略（核心工程问题）</h2>
+  <pre>主 App（数据源）
+  │ 每次快照更新/温度采样后
+  ▼ 原子写 ~/Library/Application Support/StatusButler/widget-snapshot.json
+  │   （非沙盒架构红利：主 App 与扩展同用户，共享文件即可，无需 App Group 授权配置）
+  ├─ Darwin 通知（com.linzhongyang.statusbutler.snapshot）轻量唤醒
+  ▼
+WidgetKit 扩展进程
+  │ TimelineProvider 读取快照 → 渲染当前 + 预生成未来条目（渐过期预估）
+  ▼
+桌面 / 通知中心渲染（系统调度）</pre>
+  <ul>
+    <li><strong>写入节流</strong>：快照文件写入与 <code>WidgetCenter.reloadTimelines</code> 双节流——温度变化 ≥ 2°C、或转速变化 ≥ 300 RPM、或距上次 ≥ 30 秒，三者满足其一才写/刷；杜绝刷新预算被秒级采样烧光。</li>
+    <li><strong>时间线策略</strong>：每次刷新生成"当前值 + 按 5 分钟步进外推的条目"（用最近 10 分钟斜率预估温度走势），预算耗尽时组件显示的仍是合理估计而非冻结旧值；条目带 <code>relevance</code> 提示系统何时最值得刷新。</li>
+    <li><strong>陈旧标注</strong>：快照 mtime 超过 2 分钟（App 退出/睡眠）→ 组件数字降透明度并显示"管家休息中 · HH:MM 数据"；点击深链唤起主 App。</li>
+    <li><strong>文件一致性</strong>：原子写（临时文件 + rename）+ <code>NSFileCoordinator</code> 协调读，扩展读不到时沿用上一次缓存。</li>
+  </ul>
+
+  <h2 id="build">5. 构建与工程落位</h2>
+  <ul>
+    <li>新增 SPM target <code>StatusButlerWidgets</code>（WidgetKit + SwiftUI），构建产物按 appex 组装进 <code>StatusButler.app/PlugIns/StatusButlerWidgets.appex</code>——沿用本项目"纯 swift build + 脚本组装 .app"路线（与 DDC 模块同等待遇：独立、可摘除，摘除后主 App 不受影响）。</li>
+    <li>主 App 侧新增 <code>WidgetSnapshotWriter</code>（Monitoring→Store 之后挂一个轻量订阅者）与交互命令监听器，并入 B1 四层架构的 UI/横切层。</li>
+    <li>签名：appex 与主 bundle 一起 Ad-hoc/Developer ID 签名即可，无额外账号需求（对齐 07 页"0 元路线"）。</li>
+    <li>测试：快照编码/解码往返、节流决策表（纯函数）、时间线生成器（给定序列 → 断言条目）全部可单测（Swift Testing）；渲染快照测试用固定数据比对。</li>
+  </ul>
+
+  <h2 id="risk">6. 风险与边界</h2>
+  <table>
+    <tr><th>风险</th><th>应对</th></tr>
+    <tr><td>刷新预算紧张，温度显示滞后</td><td>节流 + 斜率外推 + 陈旧标注三件套；文档与设置页明确"组件是近实时（秒十位级），精确实时看菜单栏图标/弹层"</td></tr>
+    <tr><td>扩展进程内存上限低</td><td>组件只读单个 JSON 快照，不维护历史缓冲（历史留在主 App 与 E10）</td></tr>
+    <tr><td>未来系统收紧共享文件/刷新策略</td><td>数据通道抽象为协议，可切换 App Group 容器方案；版本矩阵测试钉住行为</td></tr>
+    <tr><td>macOS 13 无桌面摆放</td><td>功能页与设置文案按系统版本自适应说明（通知中心可用）</td></tr>
+  </table>
+  <p class="lede" style="margin-top:26px">→ 联动：A5 温控（WG-02/03 的数据源）/ E1 槽位（同一可视化语系）/ E4 性能 / E5 天气 / E6 日程 / E7 主题（组件配色）/ E9 深链（<code>butler://panel/*</code>）。工程落位见 <a href="b1-tech.html" target="_parent">B1</a>。</p>
+</div>
+</body>
+</html>

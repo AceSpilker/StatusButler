@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A11 · 电池、显示与音频增强设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A11 / Power · Display · Audio（E13 / E14 / E20 / E21 深度设计）</div>
+  <h1>电池养护、显示控制与音频增强</h1>
+  <p class="lede">电池养护中心（E13，C1 采纳）· DDC 亮度控制（E14，C2）· 每 App 独立音量（E20，R-5）· 一键熄屏不睡眠（E21，R-6）。登记见 <a href="a4-register.html" target="_parent">A4</a>。</p>
+
+  <h2>一、E13 · 电池养护中心（BAT-01 ~ 04）<span class="badge b-green">公开 API · 守红线二</span></h2>
+  <div class="feat">
+    <h3>功能设计</h3>
+    <ul>
+      <li><strong>BAT-01 养护总览</strong>：系统原生充电上限（Sonoma+ 的 80% 等限制）状态、优化充电学习状态、循环次数与容量健康（复用 S4 详情数据源 IOKit）；健康度趋势进 E10 历史曲线。</li>
+      <li><strong>BAT-02 养护提醒</strong>：可配规则——"长期插电超过 N 天提醒拔电放电一次""容量降到 80% 提醒检修"；通知 + 事件日志。</li>
+      <li><strong>BAT-03 一键直达</strong>：弹层按钮深链系统电池设置（改上限/开关优化充电在系统里完成——<strong>不写 SMC、不越权，红线二不动摇</strong>）。</li>
+      <li><strong>BAT-04 养护报告</strong>：月度小结（充放电次数、平均电量区间、满电存放时长占比），纯本地统计。</li>
+    </ul>
+  </div>
+
+  <h2>二、E14 · DDC 亮度/对比度控制（DDC-01 ~ 04）<span class="badge b-green">复用现有 DDC 模块</span></h2>
+  <div class="feat">
+    <h3>功能设计</h3>
+    <ul>
+      <li><strong>DDC-01 手动控制</strong>：弹层分区 + 槽位滑杆，控制外接显示器亮度/对比度（DDC/CI 寄存器 0x10/0x12），与既有音量 DDC 同面板。</li>
+      <li><strong>DDC-02 快捷键与联动</strong>：F1/F2 媒体键接管外接屏亮度（可选）；内建屏随系统、外接屏跟随内建屏亮度联动（Lunar 简化版，按比例曲线映射）。</li>
+      <li><strong>DDC-03 自动调光</strong>：按日出日落/时间表自动调亮暗（联动 E23 昼夜主题）；夜间最低亮度保护。</li>
+      <li><strong>DDC-04 工程边界</strong>：寄存器读写失败静默降级（同 OG-FR-151 治理）；不同显示器 DDC 实现差异容错（写后回读校验、指数退避）。</li>
+    </ul>
+  </div>
+
+  <h2>三、E20 · 每 App 独立音量（PAV-01 ~ 05）<span class="badge b-orange">可选重模块 · R-5</span></h2>
+  <div class="callout c-warn">📌 <strong>技术结论（先说实话）</strong>：macOS <strong>没有公开的"每 App 音量"API</strong>。eqMac / BackgroundMusic / SoundSource 的实现全部依赖同一路线——<strong>安装一个虚拟声卡驱动</strong>（苹果公开的 DriverKit 音频框架 AudioDriverKit，用户态系统扩展而非内核 kext），把系统输出接到虚拟设备，按 App 施加增益后再混音回真实设备。可行，但属于重资产：需要用户在系统设置批准驱动（管理员），与专业音频软件（Logic/虚拟声卡类）可能冲突。</div>
+  <div class="feat">
+    <h3>功能设计（默认关闭，opt-in 安装）</h3>
+    <ul>
+      <li><strong>PAV-01 混音台面板</strong>：弹层下钻页列出正在发声的 App，每 App 独立滑杆 + 静音 + 输出直通开关；App 图标 + 名称；未发声 App 折叠。</li>
+      <li><strong>PAV-02 安装向导</strong>：设置中明确解释原理与影响（延迟增加约 &lt;10ms、专业音频软件用户不建议），一键安装/卸载驱动（系统扩展同意流程）；卸载后完全恢复原状。</li>
+      <li><strong>PAV-03 规则</strong>：按 App 记住音量（重启生效）；"某 App 永不超过 X%"上限规则；焦点 App 自动抬升（可选）。</li>
+      <li><strong>PAV-04 直通保护</strong>：检测到专业音频软件（CoreAudio 声卡独占）运行时自动切换直通模式并提示。</li>
+      <li><strong>PAV-05 工程与红线</strong>：驱动为独立 DriverKit target（可摘除）；不装驱动时功能整体隐藏不影响其他；音频数据本地处理零上传。麦克风路径不碰（只处理输出）。</li>
+    </ul>
+  </div>
+
+  <h2>四、E21 · 一键熄屏（不睡眠）（SCR-01 ~ 04）<span class="badge b-green">纯公开 API · R-6</span></h2>
+  <div class="callout c-info">📌 <strong>技术结论：完全可以</strong>，两条公开能力组合：<code>pmset displaysleepnow</code>（立即熄屏，无需 sudo）+ IOKit 电源断言 <code>kIOPMAssertionTypePreventUserIdleSystemSleep</code>（阻止系统因空闲入睡——与 caffeinate 同机制）。熄屏后下载/编译/渲染照跑，动一下鼠标/键盘即亮屏。</div>
+  <div class="feat">
+    <h3>功能设计</h3>
+    <ul>
+      <li><strong>SCR-01 一键熄屏</strong>：动作中心按钮（E2）+ 全局热键（E22）+ <code>butler://screen/off</code> + CLI <code>statusbutler screen off</code>；触发即：创建"熄屏不断电"断言 → 执行 displaysleepnow。</li>
+      <li><strong>SCR-02 守护模式</strong>：可选"长任务守护"——检测到活跃下载/编译（磁盘+网络持续活动）时自动维持断言并熄屏，任务结束恢复正常睡眠策略（ caffeinate -u 思路的产品化）。</li>
+      <li><strong>SCR-03 状态与恢复</strong>：弹层与组件显示"屏幕已关 · 系统运行中"徽标（点击图标/触控板即唤醒是系统行为）；断言持有期间菜单栏图标加月亮角标；App 退出/崩溃自动释放断言（恢复系统默认睡眠，不留后遗症）。</li>
+      <li><strong>SCR-04 边界</strong>：笔记本合盖仍会睡眠（硬件行为，如实说明）；外接显示器熄屏时序差异容错；熄屏期间 A5 风扇/温度监控照常（这正是"熄屏不睡"的监控价值场景）。</li>
+    </ul>
+  </div>
+
+  <div class="callout c-info">📌 联动：E13↔S4/E10 电池域 · E14↔S6 DDC 模块/E23 昼夜主题 · E20↔S6 音频域/E2 动作中心 · E21↔E2/E22/E9/A6 组件。工程落位见 <a href="b1-tech.html" target="_parent">B1</a>。</div>
+</div>
+</body>
+</html>

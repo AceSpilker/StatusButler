@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A10 · 竞品版图与候选功能 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.2px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A10 / Landscape &amp; Candidates</div>
+  <h1>竞品版图与候选新功能</h1>
+  <p class="lede">同类程序项目全景调查（2026-10）＋ 从中提炼的<strong>候选功能清单</strong>：已覆盖的标出去向，未覆盖的给出采纳建议——你看中哪个说一声，我登记进 <a href="a4-register.html" target="_parent">A4</a>（R-4 起）。</p>
+
+  <h2>一、竞品版图（按品类）</h2>
+  <table>
+    <tr><th style="width:120px">品类</th><th>代表项目</th><th>对我们的启示</th></tr>
+    <tr><td>系统监控</td><td><a href="https://bjango.com/istatmenus/" target="_blank" rel="noopener">iStat Menus</a>（商业标杆）· <a href="https://github.com/exelban/stats" target="_blank" rel="noopener">Stats</a>（开源）· Sensei · Activity Monitor</td><td>多指标曲线/菜单栏密度/传感器目录——A7 已对标；iStat 的"日期时间+世界时钟"是经典槽位源</td></tr>
+    <tr><td>温控风扇</td><td>TG Pro · Macs Fan Control</td><td><a href="a5-thermal.html" target="_parent">A5 已深度对标</a></td></tr>
+    <tr><td>菜单栏管理</td><td><a href="https://www.macbartender.com" target="_blank" rel="noopener">Bartender</a>（商业标杆）· <a href="https://github.com/jordanbaird/Ice" target="_blank" rel="noopener">Ice</a>（开源）· Hidden Bar · Vanilla</td><td>E3 已设计；Ice 开源可研读实现细节（私有视图树路线）</td></tr>
+    <tr><td>电池养护</td><td><a href="https://github.com/davidwernhart/AlDente" target="_blank" rel="noopener">AlDente</a>（充电上限，需写 SMC）· Watt · Battery Buddy</td><td>⚠️ 直接控制充电撞我们红线二——安全替代见候选 C1</td></tr>
+    <tr><td>显示器控制</td><td><a href="https://github.com/MonitorControl/MonitorControl" target="_blank" rel="noopener">MonitorControl</a>（开源 DDC 亮度/音量）· BetterDisplay · Lunar</td><td>我们已有 DDC 音量（S6）——亮度/对比度是自然延伸（候选 C2）</td></tr>
+    <tr><td>日程效率</td><td><a href="https://github.com/leits/MeetingBar" target="_blank" rel="noopener">MeetingBar</a>（开源）· Itsycal · Dato</td><td>E6 已有日程倒数——"一键加入会议"是高价值补充（候选 C3）</td></tr>
+    <tr><td>插件化平台</td><td><a href="https://github.com/swiftbar/SwiftBar" target="_blank" rel="noopener">SwiftBar</a>（脚本生成菜单栏，开源）· xbar</td><td>★ 重要启发：脚本插件生态让工具箱无限扩展（候选 C4）</td></tr>
+    <tr><td>快速开关</td><td>One Switch · Rasmus</td><td>E2 动作中心已覆盖其大部分</td></tr>
+    <tr><td>音频增强</td><td>eqMac · BackgroundMusic（每 App 音量）</td><td>每 App 音量需虚拟声卡驱动——重资产，谨慎（候选 C8）</td></tr>
+    <tr><td>安全维护</td><td><a href="https://github.com/ParetoSecurity/pareto-mac" target="_blank" rel="noopener">Pareto Security</a>（开源体检）· Latest（更新检查）</td><td>"管家体检"人设契合度满分（候选 C6）</td></tr>
+  </table>
+
+  <h2>二、候选新功能清单（未覆盖项）</h2>
+  <table>
+    <tr><th style="width:52px">编号</th><th>候选功能</th><th style="width:200px">说明与出处</th><th style="width:110px">采纳建议</th></tr>
+    <tr><td>C1</td><td><strong>电池养护中心（安全版 AlDente）</strong></td><td>读取系统原生充电上限/优化充电状态、养护提醒、深链系统设置；<strong>不做</strong>越权写 SMC（守住红线二）</td><td><span class="badge b-green">推荐</span> 人设契合</td></tr>
+    <tr><td>C2</td><td><strong>DDC 亮度/对比度控制</strong></td><td>扩展既有 DDC 模块：外接显示器亮度滑杆、快捷键、随时间自动调光（Lunar 简化版）</td><td><span class="badge b-green">推荐</span> 复用现有模块</td></tr>
+    <tr><td>C3</td><td><strong>会议助手</strong></td><td>E6 扩展：检测事件里的 Zoom/Meet/Teams 链接 → 一键加入；会议中快捷静音麦克风；MeetingBar 同款核心体验</td><td><span class="badge b-green">推荐</span></td></tr>
+    <tr><td>C4</td><td><strong>脚本插件槽（SwiftBar 式）</strong></td><td>用户放一段 shell/Swift 脚本，输出成为 E1 槽位源/弹层分区（沙盒化执行、超时杀灭、无交互输出）——工具箱无限扩展性</td><td><span class="badge b-purple">战略级</span></td></tr>
+    <tr><td>C5</td><td><strong>网络质量测试</strong></td><td>弹层一键测：上下行/延迟/抖动（系统 networkQuality 能力封装），与 PF-01 网速互补</td><td><span class="badge b-blue">可加</span></td></tr>
+    <tr><td>C6</td><td><strong>系统健康体检</strong></td><td>FileVault/防火墙/系统更新落后/防火墙等安全项检查 + 修复引导（Pareto 式），"管家巡检报告"</td><td><span class="badge b-blue">可加</span></td></tr>
+    <tr><td>C7</td><td><strong>磁盘活动监控</strong></td><td>磁盘 I/O 速率 + 剩余空间预警（A7 补齐 iStat 的磁盘维度）</td><td><span class="badge b-blue">可加</span></td></tr>
+    <tr><td>C8</td><td><strong>每 App 音量/均衡器</strong></td><td>eqMac/BackgroundMusic 类，需虚拟音频驱动（系统扩展/内核级）</td><td><span class="badge b-red">不建议</span> 重资产撞红线</td></tr>
+    <tr><td>C9</td><td><strong>全局快捷键</strong></td><td>弹层/常用动作（静音、全速应急）绑全局热键</td><td><span class="badge b-green">推荐</span> 小而美</td></tr>
+    <tr><td>C10</td><td><strong>昼夜自动主题</strong></td><td>按日出日落/系统外观自动切换明暗主题（E7 联动）</td><td><span class="badge b-blue">可加</span></td></tr>
+    <tr><td>C11</td><td><strong>趣味槽位皮肤</strong></td><td>RunCat 式：CPU 负载驱动小动画（默认关，主题商店分发）</td><td><span class="badge b-gray">锦上添花</span></td></tr>
+    <tr><td>C12</td><td><strong>App 更新扫描</strong></td><td>Latest 式：扫描已装 App 的 Homebrew/官方清单更新</td><td><span class="badge b-gray">边缘</span></td></tr>
+  </table>
+  <div class="callout c-info">✅ <strong>2026-10-12 更新：候选已全部采纳</strong>——C1~C12 转正为 E13~E19/E22~E25（深度设计 <a href="a12-productivity-platform.html" target="_parent">A12</a> 及 <a href="a11-power-display-audio.html" target="_parent">A11</a>）；C8 每 App 音量经用户确认也采纳为 E20（虚拟声卡路线，opt-in）。C4 脚本槽位是唯一"战略级"候选——它让状态管家从"功能集合"变成"平台"，但需要单独的安全设计（脚本沙盒）。</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A2 · 完整功能规格 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A2 / Feature Specification</div>
+  <h1>完整功能规格 V1.0</h1>
+  <p class="lede">状态管家（StatusButler）的<strong>全部</strong>功能规格：完整复刻参考项目 Status Trio 的能力（不设阶段、不设优先级——本表即全量范围），并沿用其隐私与系统权限红线。扩展的新能力见 <a href="a3-extensions.html" target="_parent">A3 扩展功能设计</a>；你要追加的需求登记在 <a href="a4-register.html" target="_parent">A4 需求登记表</a>，定稿后并入本页。</p>
+
+  <div class="toc"><b>规格域</b>
+    <a href="#s1">S1 三合一状态图标</a>
+    <a href="#s2">S2 展示位置（菜单栏 / Dock）</a>
+    <a href="#s3">S3 弹层面板</a>
+    <a href="#s4">S4 电池域</a>
+    <a href="#s5">S5 Wi-Fi 与网络域</a>
+    <a href="#s6">S6 音频域</a>
+    <a href="#s7">S7 蓝牙域</a>
+    <a href="#s8">S8 Apple 设备电池</a>
+    <a href="#s9">S9 设置中心</a>
+    <a href="#s10">S10 引导 / 本地化 / 无障碍</a>
+    <a href="#s11">S11 更新 / 遥测 / 系统集成</a>
+    <a href="#redline">S12 红线（全部功能的边界）</a>
+  </div>
+
+  <h2 id="s1">S1 · 三合一状态图标</h2>
+  <div class="feat">
+    <h3>OG-FR-101 自绘三合一图标</h3>
+    <p>一个图标，自上而下三个区域，全部由 CoreGraphics 自绘（矢量几何 + SF Symbols，非模板图片），明暗菜单栏自动适配：</p>
+    <ul>
+      <li><strong>上部 · 电池</strong>：百分比数字 + 充电/插头符号；充电绿色填充、系统低电量模式黄色填充、低于可配阈值红色；可选连接电源时显示百分比。</li>
+      <li><strong>中部 · 网络</strong>：Wi-Fi 信号弧 4 级；特殊态：关闭、未关联、无互联网、iPhone 热点、临时网络、互联网共享、有线连接（保留 Wi-Fi 图形的场景各自独立开关）。</li>
+      <li><strong>下部 · 音量</strong>：0–4 圆点或弧线两种样式，可整体切换；随默认输出设备切换显示对应设备分类图标。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-102 蓝牙音频图标联动</h3>
+    <ul>
+      <li>蓝牙设备播放音频时，中部图形可替换为<strong>该设备专属符号</strong>（AirPods / 耳机 / 音箱按型号映射，默认关）。</li>
+      <li>音量点/弧可变蓝（默认关）；"网络错误优先"开关决定断网时网络图形与设备符号谁让位（默认开）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-103 充电动画</h3>
+    <ul>
+      <li>充电时外环呼吸光效，开关可配；"闪电心跳"样式开关。</li>
+      <li>遵循系统"减弱动态效果"；显示器睡眠时停止；提供隐藏的测试模式便于开发验证；动画帧带缓存。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-104 渲染质量基线</h3>
+    <ul>
+      <li>SF Symbols 按"墨水中心"对齐（补偿符号侧轴承，带回归测试）。</li>
+      <li>图标状态不变不重绘：快照相等性 + 渲染缓存 + 高频刷新合并。</li>
+      <li>120×120 原始几何坐标系按比例缩放，任意 pt 尺寸不失真。</li>
+    </ul>
+  </div>
+
+  <h2 id="s2">S2 · 展示位置</h2>
+  <div class="feat">
+    <h3>OG-FR-110 菜单栏 / Dock / 双开</h3>
+    <ul>
+      <li>三种位置模式即时切换：仅菜单栏（LSUIElement 常驻）、仅 Dock、双开（切换为 Regular App 激活策略）。</li>
+      <li>Dock 图标渲染<strong>与菜单栏同一套场景状态</strong>，像素一致；任何图标改动两端同步（工程铁律，见 B1）。</li>
+      <li>Dock 背景：跟随系统图标风格 / 固定深色 / 浅色 / 透明。</li>
+      <li>点击 Dock 图标：指针在 Dock 区域时弹弹层，否则打开设置；Dock 右键菜单含设置入口。</li>
+      <li>菜单栏/Dock 右键菜单：设置、版本、退出。</li>
+    </ul>
+  </div>
+
+  <h2 id="s3">S3 · 弹层面板</h2>
+  <div class="feat">
+    <h3>OG-FR-120 弹层结构与交互</h3>
+    <ul>
+      <li>左键图标弹出锚定 Popover（多屏定位正确），点击外部或 Esc 关闭。</li>
+      <li><strong>分区化内容</strong>：电池 / 网络 / 音量 / 蓝牙 / Apple 设备 / 音频输入等分区，每个可独立显隐 + 拖动排序。</li>
+      <li><strong>下钻页</strong>：Wi-Fi 行 → 附近网络 + 链路详情；电池行 → 电池详情；蓝牙行就地展开设备列表（溢出时 Expand）；统一返回行。</li>
+      <li><strong>滚动调音量</strong>：弹层内滚轮调音量，作用域（仅音量控件 / 整面板）与方向（自然 / 传统）可配。</li>
+      <li>页脚固定操作区（设置入口、退出等）。</li>
+      <li><strong>能效纪律</strong>：弹层可见才启动重资源（蓝牙扫描、有线链路读取、Wi-Fi 名解析），关闭即释放；打开时数据 500ms 防抖合并。</li>
+    </ul>
+  </div>
+
+  <h2 id="s4">S4 · 电池域</h2>
+  <div class="feat">
+    <h3>OG-FR-130 电池概要与详情</h3>
+    <div class="grid2">
+      <div><strong>概要（图标 + 弹层行）</strong>
+        <ul>
+          <li>百分比、充电中、已接电源、充满预计时间</li>
+          <li>低电量阈值（范围校验）与状态色</li>
+          <li>系统低电量模式状态</li>
+          <li>无电池设备（台式 Mac）的占位表现</li>
+        </ul>
+      </div>
+      <div><strong>详情页（下钻）</strong>
+        <ul>
+          <li>适配器功率 W / 电压 V / 电流 mA</li>
+          <li>循环次数、健康度</li>
+          <li>低电量模式开关状态</li>
+          <li>"优化充电/充电上限暂停"状态 → 跳系统电池设置（不越权干预）</li>
+        </ul>
+      </div>
+    </div>
+    <p>数据源：IOKit 电源描述（公开 API），事件推送 + 轮询兜底双通道（见 B1 能效策略）。</p>
+  </div>
+
+  <h2 id="s5">S5 · Wi-Fi 与网络域</h2>
+  <div class="feat">
+    <h3>OG-FR-140 当前网络与状态识别</h3>
+    <ul>
+      <li>SSID 显示（需定位授权，<strong>仅在用户开启该项或打开详情时申请</strong>）、信号 4 级、频段（2.4/5/6 GHz）。</li>
+      <li>特殊状态识别：关闭 / 未关联 / 无互联网（联动网络路径监测）/ iPhone 热点 / 临时网络 / 互联网共享 / 纯有线。</li>
+      <li>弹层内开关 Wi-Fi。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-141 附近网络与链路详情</h3>
+    <ul>
+      <li>附近网络列表 + 信号强度；<strong>点击网络打开系统设置的 Wi-Fi 面板</strong>（不代填密码——红线见 S12）。</li>
+      <li>链路详情页：IP 配置、信道、频段、协商速率、受限网络（低数据模式）标记。</li>
+      <li>以太网：有线链路状态行（速度/在线状态），下钻看地址配置，仅弹层打开且当前为有线时读取。</li>
+      <li>VPN 状态行（只显示，不进图标渲染键）。</li>
+      <li>系统设置深跳必须落到目标面板自己的 Settings 扩展（带路由测试），Wi-Fi 齿轮 → Wi-Fi 面板而非 Network 面板。</li>
+    </ul>
+  </div>
+
+  <h2 id="s6">S6 · 音频域</h2>
+  <div class="feat">
+    <h3>OG-FR-150 音量状态与操作</h3>
+    <ul>
+      <li>音量等级、静音状态、默认输出设备名称 + 设备分类专属图标。</li>
+      <li>弹层内：滑杆调节、滚动调节（OG-FR-120）、静音切换、音量反馈音（可选）。</li>
+      <li>输出设备列表：点击切换默认输出设备；设备排序、"总是显示全部设备"、最大可见数可配。</li>
+      <li>音频输入：默认输入设备、输入音量、静音（默认关，设置开启）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-151 外接显示器 DDC 音量 <span class="badge b-red">私有 API</span></h3>
+    <ul>
+      <li>通过 IOKit IOAVService 的 I2C 读写（DDC/CI）直接控制外接显示器硬件音量，独立模块封装，可整体摘除；失败静默降级。</li>
+      <li>回复时序与传输重试独立处理。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-152 AirPods 专属能力</h3>
+    <ul>
+      <li>设备型号识别（AirPods 各代 / Pro / Max）。</li>
+      <li>聆听模式切换：通透 / 自适应 / 降噪（弹层蓝牙面板内）。</li>
+      <li>蓝牙音频链路异常诊断展示。</li>
+    </ul>
+  </div>
+
+  <h2 id="s7">S7 · 蓝牙域</h2>
+  <div class="feat">
+    <h3>OG-FR-160 蓝牙面板（默认关，首次开启申请蓝牙权限）</h3>
+    <ul>
+      <li>配对设备列表：名称、连接状态、电量（IOBluetooth 配对报告为主源，pmset 配件电源报告补缺，事件驱动刷新）。</li>
+      <li>AirPods 左耳 / 右耳 / 充电盒三个独立电量。</li>
+      <li><strong>设备操作</strong>：点击未连接设备即连接、点击已连接即断开；键盘/鼠标/触控板/手柄先在行内确认。</li>
+      <li>设备排序（拖动）、最大可见数、"幽灵设备"（系统残留）隐藏与恢复。</li>
+      <li>蓝牙图标缩放（100%–180%）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-161 附近 BLE 设备电量（默认关）</h3>
+    <ul>
+      <li>CoreBluetooth 扫描广播中带电量服务的<strong>附近未配对设备</strong>；允许列表（用户勾选哪些设备显示）；仅在授权 + 蓝牙面板可见时创建扫描器，会话取消门控 + 候选缓存 + 去重合并。</li>
+    </ul>
+  </div>
+
+  <h2 id="s8">S8 · Apple 设备电池（USB）</h2>
+  <div class="feat">
+    <h3>OG-FR-170 iDevice 电量 <span class="badge b-purple">第三方协议</span></h3>
+    <ul>
+      <li>读取 USB 连接的 iPhone / iPad / Apple Watch 电量，并入弹层"Apple 设备"分区。</li>
+      <li>实现路线：锁定 commit 从源码构建 libimobiledevice 栈（openssl / libplist / glue / usbmuxd / tatsu / libimobiledevice）为独立 Helper，主 App 读 Helper 输出；依赖清单 manifest + 契约脚本（版本 / RPATH / 依赖完整性）全可执行校验。</li>
+      <li>设备选择、刷新间隔、后台刷新可配；Apple Watch 支持以真机验证为准。</li>
+    </ul>
+  </div>
+
+  <h2 id="s9">S9 · 设置中心</h2>
+  <div class="feat">
+    <h3>OG-FR-180 分区设置 + 实时预览</h3>
+    <table>
+      <tr><th style="width:130px">分区</th><th>配置项（全量）</th></tr>
+      <tr><td>通用</td><td>App 语言、刷新间隔 5–60s、开机自启动、匿名统计（若启用遥测）、更新检查</td></tr>
+      <tr><td>App 图标</td><td>位置（菜单栏/Dock/双开）、Dock 背景样式、图标大小（范围校验）、重看引导</td></tr>
+      <tr><td>状态图标外观</td><td>环形描边样式、电池/Wi-Fi/蓝牙符号缩放、低电阈值、状态颜色、百分比显示策略</td></tr>
+      <tr><td>电池</td><td>充电指示、充电动画、闪电心跳、电池状态色</td></tr>
+      <tr><td>网络</td><td>Wi-Fi 图形保留策略（热点/临时/共享/有线四开关）、Wi-Fi 名称授权管理</td></tr>
+      <tr><td>蓝牙</td><td>面板开关、电量显示、设备排序/数量/隐藏、图标替换、音量变蓝、网络错误优先、附近 BLE 允许列表</td></tr>
+      <tr><td>音频</td><td>音量样式（点/弧）、滚动调节开关、自然方向、滚动作用域、输出设备排序/数量、音频输入开关</td></tr>
+      <tr><td>状态面板</td><td>分区显隐 + 排序、Apple 设备电池（选择/间隔/后台）</td></tr>
+      <tr><td>关于</td><td>版本、许可证与开源致谢、更新</td></tr>
+    </table>
+    <ul>
+      <li>全部设置 UserDefaults 持久化，<code>@Published</code> 驱动 UI 与图标管线，带取值范围校验与跨版本迁移。</li>
+      <li>外观类设置带<strong>实时预览卡片</strong>。</li>
+      <li>设置项约 60 项起步，随 A3 扩展与 A4 登记增长。</li>
+    </ul>
+  </div>
+
+  <h2 id="s10">S10 · 引导、本地化、无障碍</h2>
+  <div class="feat">
+    <h3>OG-FR-190 首次引导与帮助</h3>
+    <ul>
+      <li>首次启动"认识你的图标"图文引导（三个区域逐一解释）；只自动弹一次，设置可重开。</li>
+      <li>引导内直达设置；新装询问遥测选择（若启用），升级默认关。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-191 本地化</h3>
+    <ul>
+      <li>首发 简体中文 + English；字符串全部外置；App 语言可独立于系统语言。</li>
+      <li>本地化键一致性测试（parity），发布说明与更新源随语言分发。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-192 无障碍</h3>
+    <ul>
+      <li>图标渲染携带 Accessibility 描述（三段信号的可读摘要）；面板控件可聚焦、标签完整。</li>
+    </ul>
+  </div>
+
+  <h2 id="s11">S11 · 更新、遥测、系统集成</h2>
+  <div class="feat">
+    <h3>OG-FR-200 自动更新（Sparkle 2）</h3>
+    <ul>
+      <li>EdDSA 签名 appcast；更新说明按语言分发（首发 en + zh-Hans）；含更新失败的降级驱动。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-201 匿名遥测（可选，默认关）</h3>
+    <ul>
+      <li>仅心跳：随机安装 ID + App/macOS 版本 + 语言 + 图标位置；无姓名/账号/网络信息/硬件序列号；生产与调试构建资格分离；隐私文档公开全字段。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>OG-FR-202 系统集成</h3>
+    <ul>
+      <li>开机自启动（ServiceManagement 现代 LoginItem）；单实例锁（按 Bundle ID）；常驻能效纪律（见 B1）。</li>
+      <li>发布流水线：GitHub Actions 全自动出包（swift test + release build → .app 组装 → 签名/公证（有证书时）→ DMG + SHA-256 → Release + appcast），本地一键脚本与 CI 同源。</li>
+    </ul>
+  </div>
+
+  <h2 id="redline">S12 · 红线（所有功能的硬边界）</h2>
+  <div class="callout c-warn">
+    <strong>红线一</strong>：不读取、不存储、不传输 Wi-Fi 密码；不申请钥匙串访问。切换网络只跳转系统设置。<br>
+    <strong>红线二（2026-10-12 修订，见 A5 第 7 节）</strong>：禁止任何充电/电源域的 SMC 写入与特权操作；风扇域 SMC 写入（<code>FS! </code>、<code>F{n}Md</code>）为唯一例外，必须满足：独立模块 + 键白名单 + SMAppService 官方 Helper + 退出自愈 + 一键卸载（详见 <a href="a5-thermal.html" target="_parent">A5 温度与风扇设计</a>）。<br>
+    <strong>红线三</strong>：隐私权限按需最小化（定位仅 SSID 显示、蓝牙仅面板开启时）；App 内一切对外请求仅限 https 且仅更新/遥测两个白名单目标；遥测默认关。<br>
+    <strong>红线四</strong>：私有 API 仅限 DDC 的 I2C 通道一处，独立模块、失败即降级、可整体摘除；不引入其他未公开符号。
+  </div>
+  <p class="lede" style="margin-top:26px">→ 复刻范围到此为<strong>全量</strong>。超出上述范围的新能力见 <a href="a3-extensions.html" target="_parent">A3 扩展功能设计</a>；你的新需求走 <a href="a4-register.html" target="_parent">A4 需求登记表</a>。</p>
+</div>
+</body>
+</html>

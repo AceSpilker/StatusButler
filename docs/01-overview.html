@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>01 · 项目概览 — Status Trio 深度分析</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#2f6fed;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.8px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:2px}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:18px 0}
+  .card{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .card .num{font-size:26px;font-weight:750;color:var(--brand)}
+  .card .lbl{font-size:12.5px;color:var(--sub);margin-top:2px}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef4fe;border-color:#cdddfb;color:#274a7e}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .c-bad{background:#fdf0ee;border-color:#f5c9c4;color:#8c2d25}
+  .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  .pill{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:13px}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">01 / Overview</div>
+  <h1>项目概览：Status Trio 是什么</h1>
+  <p class="lede">三个系统信号（Wi-Fi、电池、音量），一个原生 macOS 状态图标——显示在菜单栏、Dock，或两处同时显示。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#pos">一句话定位与产品灵感</a>
+    <a href="#facts">项目基本信息</a>
+    <a href="#scale">代码规模与工程画像</a>
+    <a href="#highlights">核心亮点速览</a>
+    <a href="#philosophy">产品哲学与刻意的"不做"</a>
+    <a href="#value">对我们复刻项目的价值判断</a>
+  </div>
+
+  <h2 id="pos">一句话定位与产品灵感</h2>
+  <p>Status Trio 是一款<strong>原生 macOS 状态聚合应用</strong>：把 macOS 系统中原本分散在控制中心 / 菜单栏 / 系统设置里的 <strong>Wi-Fi 状态、电池状态、音量状态</strong> 三个信号，压缩进一个 20pt 的自定义绘制图标中；点击图标弹出的面板（Popover）又能下钻到比图标更深的细节：Wi-Fi 附近网络与链路详情、蓝牙配对设备列表、电池详情页、正在播放的音频设备等。</p>
+  <p>产品灵感来自 <strong>iPhone Duo（灵动岛式组合状态栏）</strong>把 Wi-Fi / 电池 / 蜂窝合并成一个状态图标的交互，作者将其适配到 Mac 上，用"音量"替换了"蜂窝数据"。</p>
+  <div class="callout c-info">💡 官方网站 <a href="https://statustrio.lingai.net/" target="_blank" rel="noopener">statustrio.lingai.net</a> 提供了一个浏览器端的图标状态模拟器，可以在不安装 App 的情况下体验所有图标状态——这也说明该项目的图标渲染核心是<strong>数据驱动、与平台无关的几何描述</strong>（仓库里的 <code>status-menubar-demo.html</code> 是它的雏形）。</div>
+
+  <h2 id="facts">项目基本信息</h2>
+  <table>
+    <tr><th style="width:170px">项目</th><th>信息</th></tr>
+    <tr><td>仓库</td><td><a href="https://github.com/lingyired/status-trio" target="_blank" rel="noopener">github.com/lingyired/status-trio</a></td></tr>
+    <tr><td>作者</td><td>lingyired（个人开发者，独立项目，与 Apple 无关）</td></tr>
+    <tr><td>开源协议</td><td>Apache License 2.0（附 NOTICE 文件）</td></tr>
+    <tr><td>平台要求</td><td>macOS 13（Ventura）起 <span class="badge b-orange">Ventura 运行时验证待完成</span>；Universal（Apple Silicon + Intel）</td></tr>
+    <tr><td>构建工具链</td><td>Swift 6 / Xcode 26+（必须 macOS 26 SDK，否则静默产出旧版弹层外观）</td></tr>
+    <tr><td>分发方式</td><td>GitHub Releases 提供 DMG；Sparkle 2 自动更新（EdDSA 签名 appcast）；当前公开版为 Ad-hoc 签名、未公证（有 Developer ID + 公证流程，依赖 Secrets）</td></tr>
+    <tr><td>本地化</td><td>12 种语言（英、简中、繁中、日、韩、西、法、德、意、巴葡、俄、阿）</td></tr>
+    <tr><td>热度</td><td>Trendshift 榜单收录；README 提供 Star History 曲线</td></tr>
+  </table>
+
+  <h2 id="scale">代码规模与工程画像</h2>
+  <div class="cards">
+    <div class="card"><div class="num">249</div><div class="lbl">Swift 源文件（Sources/）</div></div>
+    <div class="card"><div class="num">40,372</div><div class="lbl">源码行数</div></div>
+    <div class="card"><div class="num">231</div><div class="lbl">测试文件（Tests/）</div></div>
+    <div class="card"><div class="num">55,836</div><div class="lbl">测试代码行数</div></div>
+    <div class="card"><div class="num">123</div><div class="lbl">docs/ 技术文档（含 31 份设计规格）</div></div>
+    <div class="card"><div class="num">27</div><div class="lbl">构建/校验脚本（scripts/）</div></div>
+    <div class="card"><div class="num">60</div><div class="lbl">用户可配置项（SettingsStore @Published）</div></div>
+    <div class="card"><div class="num">12</div><div class="lbl">语言包（.lproj 资源）</div></div>
+  </div>
+  <p>几个值得注意的画像特征：</p>
+  <ul>
+    <li><strong>测试代码比业务代码还多（约 1.4 : 1）</strong>，且包含像素级回归：充电动画渲染有指纹（fingerprint）测试，Wi-Fi 图标居中有"墨水中心对齐"回归测试（Issue #30），本地化有 12 语言键一致性（parity）测试。</li>
+    <li>文档密度极高：<code>docs/</code> 下每个功能都有一份"调查报告 / 设计规格 / 行为矩阵"，<code>docs/superpowers/specs/</code> 保存了 31 份按日期编号的设计文档，相当于完整的产品决策史。</li>
+    <li>仓库根有 <code>AGENTS.md</code>（约 100 行的 AI 协作规则）与 <code>.agents/skills/</code>（25 个 vendored 技能），说明作者大量借助 AI 编码智能体开发，并把工程约定固化进仓库。</li>
+    <li>存在 <code>analytics/</code> 目录（每日 GitHub 指标快照）与 <code>appcast.xml</code>（18 万行的 Sparkle 更新源文件），发布链路完全自动化。</li>
+  </ul>
+
+  <h2 id="highlights">核心亮点速览</h2>
+  <ul>
+    <li><strong>一图标三信号</strong>：电池（顶部）+ Wi-Fi 或蓝牙音频设备图标（中部）+ 音量点/弧（底部）共享一个图标；蓝牙播放时音量指示可变蓝。</li>
+    <li><strong>菜单栏、Dock 或双开</strong>：Dock 图标可跟随系统图标风格，或固定深色/浅色/透明背景；通过激活策略（<code>LSUIElement</code> ↔ Regular App）动态切换。</li>
+    <li><strong>下钻式弹层面板</strong>：Wi-Fi 附近网络 + 链路详情（IP、信道、频段、速率）、蓝牙配对设备就地连接/断开、电池详情（适配器功率、电压、电流、循环次数、低电量模式）。</li>
+    <li><strong>蓝牙设备电量生态</strong>：AirPods 左/右耳/充电盒分体电量、附近 BLE 设备电量扫描（CoreBluetooth）、甚至通过静态编译的 <strong>libimobiledevice</strong> 读取 USB 连接的 iPhone / iPad / Apple Watch 电量。</li>
+    <li><strong>音频深度集成</strong>：输出/输入设备控制、自然滚动方向调节音量、弹层内滚轮调音量、外接显示器通过 <strong>DDC/CI 私有 I2C API</strong> 直接控制音量、AirPods 通透/降噪模式切换。</li>
+    <li><strong>高度可定制</strong>：图标大小、符号缩放（100%–180%）、环形描边样式、状态颜色、弹层分区显示与否及排序、刷新间隔（5–60s）、充电呼吸动画开关。</li>
+    <li><strong>能效优先</strong>：事件驱动更新 + 慢速轮询兜底；界面不可见时降低轮询步长；显示器睡眠时跳过轮询并带自愈上限；渲染结果多级缓存。</li>
+  </ul>
+
+  <h2 id="philosophy">产品哲学与刻意的"不做"</h2>
+  <p>项目在 <code>docs/known-limitations.md</code> 中明确了两条"刻意边界"，这对我们复刻项目的需求取舍最有参考价值：</p>
+  <div class="callout c-warn">
+    <strong>边界一：切换 Wi-Fi 网络必须跳转系统设置。</strong>macOS 没有公开 API 可以"用已保存密码连接网络"，任何替代路径最终都会让 App 持有 Wi-Fi 密码。Status Trio 选择在弹层中列出附近网络，点击后打开系统设置的 Wi-Fi 面板，<strong>从不读取、从不存储 Wi-Fi 密码，从不申请钥匙串权限</strong>。
+  </div>
+  <div class="callout c-warn">
+    <strong>边界二："立即充满"留在 macOS 手里。</strong>当优化充电或充电上限暂停充电时，弹层只报告暂停状态并链接到电池设置面板；没有公开 API 允许 App 越过上限继续充电，项目<strong>拒绝写 SMC、拒绝附带特权 Helper</strong>去做这件事。
+  </div>
+  <p>同样的克制还体现在：位置权限仅在用户选择显示 Wi-Fi 名称时才申请（macOS 用定位权限保护 SSID）；蓝牙权限仅在显示蓝牙面板时申请；遥测默认关闭、内容最小化（随机安装 ID + 版本 + 语言 + 图标位置，无任何硬件标识）。</p>
+
+  <h2 id="value">对我们复刻项目的价值判断</h2>
+  <p>把 Status Trio 作为蓝本做"同类软件"，它的可借鉴性与风险点同样突出：</p>
+  <table>
+    <tr><th style="width:50%">✅ 高价值可借鉴</th><th>⚠️ 需要评估的风险 / 成本</th></tr>
+    <tr>
+      <td>
+        • 分层架构清晰：Monitoring → Store → Presentation → UI，协议化监控器便于注入测试<br>
+        • 事件驱动 + 兜底轮询的能效模型，细节（步长、睡眠跳过、自愈）可直接抄<br>
+        • 图标渲染管线（场景状态 → 几何 → 渲染器 → 缓存 → 合并刷新）<br>
+        • 60 项设置的数据模型与设置中心分区方式<br>
+        • 发布工程：Sparkle + 多语言 appcast + GitHub Actions 全自动出包
+      </td>
+      <td>
+        • 构建门槛：必须 Xcode 26 / macOS 26 SDK，CI 用 macos-26 runner + Swift 6.3.3<br>
+        • DDC 音量、libimobiledevice 电量属于<strong>私有 API / 第三方 C 库</strong>，稳定性与审核风险自担<br>
+        • 图标像素级回归测试成本高（但对长期演进价值大）<br>
+        • 与 macOS 系统行为深度耦合（弹层玻璃效果、SF Symbols 墨水居中等），每次系统更新都可能返工<br>
+        • 测试/文档投入约占总代码量 60%+，复刻预算需预留
+      </td>
+    </tr>
+  </table>
+  <div class="callout c-info">📌 后续章节：<a href="02-features.html" target="_parent">02 功能全景</a> 逐项拆解功能细节；<a href="04-architecture.html" target="_parent">04 架构与数据流</a> 拆代码结构；<a href="06-requirements.html" target="_parent">06 复刻需求基线</a> 已把以上分析转成可执行的需求清单（含优先级与预留扩展位）。</div>
+</div>
+</body>
+</html>

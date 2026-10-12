@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 · 功能全景 — Status Trio 深度分析</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#2f6fed;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.8px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:2px}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef4fe;border-color:#cdddfb;color:#274a7e}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .feat .src{font-size:12px;color:var(--sub);font-family:"SF Mono",Menlo,monospace;margin-bottom:8px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">02 / Features</div>
+  <h1>功能全景：它到底能做什么</h1>
+  <p class="lede">按"图标 → 位置 → 各信号域 → 面板 → 设置 → 系统集成"逐层拆解，每项均标注对应的源码位置，方便回查实现。</p>
+
+  <div class="toc"><b>功能域索引</b>
+    <a href="#icon">F1 三合一状态图标</a>
+    <a href="#placement">F2 展示位置（菜单栏 / Dock）</a>
+    <a href="#battery">F3 电池域</a>
+    <a href="#wifi">F4 Wi-Fi 域</a>
+    <a href="#volume">F5 音量 / 音频域</a>
+    <a href="#bluetooth">F6 蓝牙域</a>
+    <a href="#apple">F7 Apple 设备电池（USB）</a>
+    <a href="#net">F8 VPN 与以太网</a>
+    <a href="#panel">F9 弹层面板（Popover）</a>
+    <a href="#settings">F10 设置中心</a>
+    <a href="#guide">F11 首次引导与帮助</a>
+    <a href="#system">F12 系统集成能力</a>
+  </div>
+
+  <!-- F1 -->
+  <h2 id="icon">F1 · 三合一状态图标</h2>
+  <div class="feat">
+    <h3>一个 20pt 图标承载三个实时信号 <span class="badge b-blue">核心</span></h3>
+    <div class="src">Presentation/Icon/* · UI/Icon/StatusIconRenderer.swift · UI/Icon/StatusIconGeometry.swift</div>
+    <p>图标自上而下分为三个区域，全部由 App <strong>自绘</strong>（CoreGraphics 手绘环形 + SF Symbols，非模板图片）：</p>
+    <ul>
+      <li><strong>顶部：电池</strong> — 百分比数字 + 充电图标 / 插头图标；充电时绿色填充，系统低电量模式时黄色填充，低于阈值（可配置）时红色；可选"连接时显示百分比"。</li>
+      <li><strong>中部：网络</strong> — Wi-Fi 信号弧（4 级强度）；特殊状态：关闭、未关联、无互联网、iPhone 热点、临时网络（Ad-hoc）、互联网共享、有线（以太网时可选保留 Wi-Fi 图形）；<strong>蓝牙音频播放时可被设备专属符号替换</strong>（AirPods、耳机、音箱等设备模型自带符号）。</li>
+      <li><strong>底部：音量</strong> — 0–4 个圆点或一条弧线两种样式；蓝牙设备播放时可整体变蓝；随系统输出设备切换显示对应设备图标。</li>
+    </ul>
+    <p>细节：SF Symbols 的可见"墨水"相对布局框有侧轴承（side bearing），渲染器专门做了<strong>墨水中心对齐补偿</strong>并按符号配置缓存（Issue #30 回归测试保护）；图标渲染经过 <code>IconRenderCoalescer</code> 合并高频刷新；菜单栏与 Dock 走同一套场景状态（<code>IconSceneState</code>），保证两处像素一致。</p>
+  </div>
+  <div class="callout c-info">🎨 <strong>充电动画</strong>：充电时图标外环出现呼吸/脉冲光效（ChargingEffect 系列 9 个文件），支持心跳式"闪电心跳"开关；遵循系统"减弱动态效果"（Reduce Motion，通过 <code>ChargingEffectMotionMonitor</code> 监听）；显示器睡眠时自动停止；带测试模式（隐藏设置）与渲染帧缓存。</div>
+
+  <!-- F2 -->
+  <h2 id="placement">F2 · 展示位置：菜单栏、Dock 或双开</h2>
+  <div class="feat">
+    <h3>三种部署形态 <span class="badge b-blue">核心</span></h3>
+    <div class="src">App/AppActivationPolicy.swift · App/AppIconController.swift · UI/Icon/DockIconRenderer.swift</div>
+    <ul>
+      <li><strong>仅菜单栏</strong>：App 以 <code>LSUIElement</code>（无 Dock 图标、无主窗口）常驻。</li>
+      <li><strong>仅 Dock</strong> / <strong>双开</strong>：切换为 Regular App 激活策略，Dock 图标实时渲染同一套三合一图标；点击 Dock 图标弹出弹层或打开设置（<code>DockActivationAction</code> 判定指针是否在 Dock 区域、是否为 reopen 事件）。</li>
+      <li><strong>Dock 背景样式</strong>：跟随系统图标风格（读取当前系统外观主题 <code>SystemIconAppearanceTheme</code>），或固定深色 / 浅色 / 透明。</li>
+      <li>Dock 图标渲染按 <code>DockIconRenderKey</code> 缓存（<code>DockIconRenderCache</code> / <code>DockIconPreviewCache</code>），状态不变不重绘。</li>
+      <li>右键菜单（菜单栏与 Dock 通用）：设置、版本号、退出；Dock 还有独立的 <code>AppDockMenu</code>。</li>
+    </ul>
+  </div>
+
+  <!-- F3 -->
+  <h2 id="battery">F3 · 电池域</h2>
+  <div class="feat">
+    <h3>从百分比到电池详情页 <span class="badge b-green">公开 API</span></h3>
+    <div class="src">Monitoring/BatteryMonitor.swift · Monitoring/BatteryDetailsReader.swift · Monitoring/SystemPowerReader.swift · UI/BatteryDetailsView.swift</div>
+    <div class="grid2">
+      <div>
+        <strong>图标/概要行</strong>
+        <ul>
+          <li>百分比、充电中、已接电源、充满预计时间</li>
+          <li>低电量阈值可配置 + 颜色</li>
+          <li>低电量模式状态（黄色标识）</li>
+          <li>无电池设备（台式 Mac）的占位表现</li>
+        </ul>
+      </div>
+      <div>
+        <strong>详情页（下钻）</strong>
+        <ul>
+          <li>适配器功率（W）、电压（V）、电流（mA）</li>
+          <li>循环次数、电池健康度</li>
+          <li>低电量模式开关状态</li>
+          <li>"优化充电/充电上限暂停"状态 → 链接到系统电池设置（不越权干预，见概览页边界二）</li>
+        </ul>
+      </div>
+    </div>
+    <p>数据源为 IOKit 电源描述（公开接口），事件 + 轮询双通道（见 04 架构页）。</p>
+  </div>
+
+  <!-- F4 -->
+  <h2 id="wifi">F4 · Wi-Fi 域</h2>
+  <div class="feat">
+    <h3>状态、附近网络、链路详情 <span class="badge b-green">CoreWLAN</span></h3>
+    <div class="src">Monitoring/WiFiMonitor.swift · Monitoring/WiFiStatusReader.swift · Monitoring/WiFiKnownNetworkProvider.swift · Monitoring/WiFiNameAuthorizer.swift · Monitoring/WiFiNetworkController.swift · UI/WiFiNetworkListView.swift · UI/LinkDetailsView.swift</div>
+    <ul>
+      <li><strong>当前网络</strong>：SSID 显示（需用户授权定位权限——macOS 用定位保护 SSID；<code>WiFiNameAuthorizer</code> 管理授权时机，仅在用户开启该显示项或打开详情时申请）、信号强度 4 级、频段（2.4/5/6 GHz）。</li>
+      <li><strong>特殊状态识别</strong>：Wi-Fi 关闭 / 未关联 / 无互联网（联动 NWPathMonitor）/ iPhone 个人热点 / 临时网络 / 互联网共享 / 纯有线连接（可配置此时是否仍显示 Wi-Fi 图形，含热点、临时、共享三种场景独立开关）。</li>
+      <li><strong>附近网络列表</strong>：扫描周围 Wi-Fi 并列出信号强度；<strong>点击某个网络会打开系统设置的 Wi-Fi 面板</strong>完成切换（刻意不代填密码，见边界一）。</li>
+      <li><strong>链路详情</strong>：IP 配置、信道、频段、协商速率、受限网络（Low Data Mode）标记。</li>
+      <li><strong>开关 Wi-Fi</strong>：弹层内可直接开关无线网卡；系统设置跳转带<strong>路由测试</strong>保护（必须落在 Wi-Fi 面板自己的 Settings 扩展，而非 Network 面板——AGENTS.md 专门规定了验证方法）。</li>
+    </ul>
+  </div>
+
+  <!-- F5 -->
+  <h2 id="volume">F5 · 音量 / 音频域</h2>
+  <div class="feat">
+    <h3>从音量点到外接显示器 DDC 控制 <span class="badge b-blue">深度功能</span></h3>
+    <div class="src">Monitoring/VolumeMonitor.swift · Audio/*（20 个文件）· UI/VolumeControlsView.swift · UI/AudioInputControlsView.swift</div>
+    <ul>
+      <li><strong>音量状态</strong>：等级百分比、静音状态、当前默认输出设备名称与图标（每类设备有专属图标，<code>AudioOutputDeviceIcon</code>）。</li>
+      <li><strong>弹层内调节</strong>：滚轮/触控板滚动调音量，可选作用域（仅音量控件 / 整个面板）；可选"自然方向"（内容跟随手指 vs 传统滚轮方向）；滑杆调节；音量反馈音。</li>
+      <li><strong>输出设备切换</strong>：列出所有输出设备（可配置"总是显示全部设备"与最大可见数、设备排序），点击切换默认输出设备。</li>
+      <li><strong>音频输入</strong>：默认输入设备、输入音量、静音（默认关闭，需在设置开启）。</li>
+      <li><strong>外接显示器音量（DDC/CI）</strong> <span class="badge b-red">私有 API</span>：通过 <code>DDCPrivateAPI</code> C target 直接调用 IOKit 的 <code>IOAVServiceReadI2C / WriteI2C</code> 读写显示器 DDC 寄存器，直接控制外接显示器音量（<code>DDCDisplayTransport</code>、<code>DDCVolumeCoordinator</code>、<code>DDCVolumeReply</code> 处理时序与回复）。</li>
+      <li><strong>AirPods 专属</strong>：设备型号识别（<code>AirPodsModel</code>）、通透/自适应/降噪聆听模式切换（<code>BluetoothListeningMode*</code> 系列）。</li>
+    </ul>
+  </div>
+
+  <!-- F6 -->
+  <h2 id="bluetooth">F6 · 蓝牙域</h2>
+  <div class="feat">
+    <h3>配对设备管理 + 多源电量读取 <span class="badge b-blue">默认关闭</span></h3>
+    <div class="src">Monitoring/BluetoothDeviceController.swift · Monitoring/BluetoothBatteryReader.swift · Monitoring/BluetoothLEBatteryScanner.swift · Monitoring/BluetoothAccessoryBatteryEventMonitor.swift · UI/BluetoothDeviceList.swift</div>
+    <ul>
+      <li><strong>配对设备列表</strong>（弹层面板内）：显示连接状态与电量；<strong>点击未连接设备即发起连接，点击已连接设备即断开</strong>；键盘/鼠标/触控板/手柄等 HID 设备先在行内确认（防误断）；"幽灵设备"（系统残留的已移除设备）可隐藏/恢复。</li>
+      <li><strong>电量三源合并</strong>：
+        <ol>
+          <li>IOBluetooth 配对报告自带的电量（主要来源）；</li>
+          <li><code>pmset</code> 配件电源报告 + <code>AccessoryPowerNotify</code> 事件（第二来源，仅补缺）；</li>
+          <li><strong>附近 BLE 扫描</strong>（CoreBluetooth）：扫描广播中带电量 GATT 服务的附近蓝牙设备（默认关，需蓝牙授权且弹层可见时才创建 <code>CBCentralManager</code>，带允许列表与会话取消门控）。</li>
+        </ol>
+        AirPods 显示左耳 / 右耳 / 充电盒三个独立电量。</li>
+      <li><strong>图标联动</strong>：蓝牙音频播放时，中部 Wi-Fi 图形可替换为该设备专属符号（AirPods Pro、耳机、音箱各有不同符号，按设备型号映射）；音量点/弧可变蓝；"网络错误优先"开关决定断网时保留哪个信号。</li>
+      <li><strong>蓝牙音频诊断</strong>（<code>AppleBluetoothAudioDiagnostics</code>）：识别蓝牙音频链路异常并展示。</li>
+    </ul>
+  </div>
+
+  <!-- F7 -->
+  <h2 id="apple">F7 · Apple 设备电池（USB 连接的 iPhone / iPad / Apple Watch）</h2>
+  <div class="feat">
+    <h3>自编译 libimobiledevice 读取 iDevice 电量 <span class="badge b-purple">重资产功能</span></h3>
+    <div class="src">Monitoring/MobileBatteryController.swift · Monitoring/MobileBatteryHelperReader.swift · Support/mobile-battery-dependencies.json · scripts/build-mobile-battery-helper.sh</div>
+    <p>这是全项目工程投入最重的功能之一：项目<strong>从源码静态编译整套 libimobiledevice 栈</strong>（openssl 3.5.9 → libplist → libimobiledevice-glue → libusbmuxd → libtatsu → libimobiledevice 1.4.0，版本与 commit 锁定在 <code>mobile-battery-dependencies.json</code>），构建出独立 Helper 二进制，通过 USB 读取连接中的 iPhone / iPad / Apple Watch 电量，并入弹层的"Apple 设备"区块。</p>
+    <ul>
+      <li>设备选择、刷新间隔、后台刷新均可配置；</li>
+      <li>配套 6 个校验脚本（依赖版本、clang 版本、RPATH、bundle 完整性等）；</li>
+      <li>Apple Watch 支持有专门调研文档（<code>docs/apple-watch-first-read.md</code>、<code>docs/apple-watch-battery.md</code>）。</li>
+    </ul>
+    <div class="callout c-warn">复刻成本提示：此功能链路长（第三方 C 库 + Helper 进程 + 依赖锁定 + 多脚本校验），建议在复刻项目中作为<strong>独立后期里程碑</strong>，不进 P0。</div>
+  </div>
+
+  <!-- F8 -->
+  <h2 id="net">F8 · VPN 与以太网</h2>
+  <div class="feat">
+    <h3>附加网络信号 <span class="badge b-green">公开 API</span></h3>
+    <div class="src">Monitoring/VPNMonitor.swift · Monitoring/VPNProbe.swift · Monitoring/NetworkConnectionMonitor.swift · Monitoring/PrimaryLinkController.swift · UI/VPNStatusView.swift · UI/EthernetStatusView.swift</div>
+    <ul>
+      <li><strong>VPN 状态行</strong>：通过系统网络扩展描述探测当前 VPN 是否生效（刻意不进入图标快照，只在弹层显示——避免污染图标渲染 key）；</li>
+      <li><strong>以太网链路</strong>：有线连接时显示链路状态行（速度、是否在线），下钻可看地址配置（IP），仅在弹层打开且当前为有线连接时才读取，离开即释放；</li>
+      <li><strong>受限网络标记</strong>（Low Data Mode，<code>NWPath.isConstrained</code>）显示在网络行。</li>
+    </ul>
+  </div>
+
+  <!-- F9 -->
+  <h2 id="panel">F9 · 弹层面板（Popover）</h2>
+  <div class="feat">
+    <h3>左键弹层：分区可编排的状态中心 <span class="badge b-blue">核心交互</span></h3>
+    <div class="src">UI/StatusPopoverView.swift · Presentation/Panel/* · UI/PopoverWindowPlacement.swift · UI/PopoverScrollTargets.swift · UI/PopoverFooterView.swift</div>
+    <ul>
+      <li><strong>分区化内容</strong>：电池行 / 网络行 / 音量行 / 蓝牙行 / Apple 设备 / 音频输入等分区，每个分区可独立显示/隐藏，并可<strong>拖动排序</strong>（<code>popupSectionOrder</code>）；</li>
+      <li><strong>下钻导航</strong>：点击 Wi-Fi 行 → 附近网络 + 链路详情页；点击电池行 → 电池详情页；蓝牙行就地展开设备列表（放不下时 Expand 控制）；带返回行；</li>
+      <li><strong>窗口定位</strong>：锚定菜单栏图标或 Dock 位置（<code>DockPopoverPlacement</code>），多屏处理；</li>
+      <li><strong>细节打磨</strong>：弹层打开时数据 500ms 防抖合并（<code>popupDebounceInterval</code>）；滚动目标区分音量控件/全面板；页脚固定操作区；弹层可见性门控了蓝牙扫描与有线链路读取（不可见即停，省电）；</li>
+      <li><strong>macOS 26 玻璃外观</strong>：跟随新版系统弹层视觉（旧 SDK 构建会静默丢失，构建脚本强制 SDK ≥ 26）。</li>
+    </ul>
+  </div>
+
+  <!-- F10 -->
+  <h2 id="settings">F10 · 设置中心</h2>
+  <div class="feat">
+    <h3>60 项可配置项，8 大分区 <span class="badge b-blue">数据驱动</span></h3>
+    <div class="src">UI/Settings/*（23 个文件）· Settings/SettingsStore.swift（1333 行）</div>
+    <table>
+      <tr><th style="width:130px">设置分区</th><th>代表配置项（UserDefaults key 摘录）</th></tr>
+      <tr><td>通用 General</td><td>语言、刷新间隔（<code>statusRefreshIntervalSeconds</code> 5–60s）、开机启动、匿名统计、更新检查</td></tr>
+      <tr><td>App 图标</td><td>图标位置（菜单栏/Dock/双开 <code>appIconPlacement</code>）、Dock 背景（<code>dockIconBackgroundPreference</code>）、图标大小、重看引导</td></tr>
+      <tr><td>状态图标外观</td><td>环形描边样式 <code>ringStrokeStyle</code>、电池符号缩放、Wi-Fi/蓝牙符号缩放、电量临界阈值、状态颜色、是否显示百分比</td></tr>
+      <tr><td>电池</td><td>充电指示、充电动画 <code>showsChargingEffect</code>、闪电心跳 <code>showsChargingBoltHeartbeat</code>、电池状态色 <code>usesBatteryStatusColors</code></td></tr>
+      <tr><td>网络</td><td>Wi-Fi 图形保留策略（热点/临时/共享/有线四个独立开关）、Wi-Fi 名称授权</td></tr>
+      <tr><td>蓝牙</td><td>蓝牙面板开关、设备电量显示、设备排序与最大可见数、幽灵设备隐藏、图标替换 <code>replacesNetworkIconWithBluetoothAudio</code>、音量变蓝 <code>usesBluetoothAudioVolumeColor</code>、网络错误优先 <code>prioritizesNetworkErrorsOverBluetoothAudio</code>、附近 BLE 扫描允许列表</td></tr>
+      <tr><td>音频</td><td>音量样式（点/弧 <code>volumeDisplayStyle</code>）、滚动调节 <code>popupScrollAdjustsVolume</code>、自然滚动、滚动作用域、输出设备排序/数量、音频输入开关</td></tr>
+      <tr><td>状态面板</td><td>分区显隐 <code>enabledPopupSections</code>、分区排序 <code>popupSectionOrder</code>、Apple 设备电池（选择/间隔/后台 <code>refreshesAppleBatteriesInBackground</code>）</td></tr>
+    </table>
+    <p>设置持久化全部走 UserDefaults，<code>SettingsStore</code> 以 60 个 <code>@Published</code> 属性暴露，并派生 <code>iconPresentationPublisher</code> 驱动图标管线；含设置迁移逻辑（<code>AppleDeviceSettingsMigration</code>）。</p>
+  </div>
+
+  <!-- F11 -->
+  <h2 id="guide">F11 · 首次引导与帮助</h2>
+  <div class="feat">
+    <h3>"Meet your icon" 引导 <span class="badge b-green">体验细节</span></h3>
+    <div class="src">UI/IconGuideOnboardingView.swift · UI/IconGuideView.swift · App/OnboardingWindowController.swift</div>
+    <ul>
+      <li>首次启动弹出图文引导，逐一解释图标三个区域的含义（打开策略 <code>IconGuideOnboardingPolicy</code>：只首次自动弹，之后从设置重开）；</li>
+      <li>引导页可直达设置与遥测选择（新装询问是否分享匿名统计，升级默认关）；</li>
+      <li>设置内有实时预览卡片（<code>StatusIconPreviewCard</code>、<code>IconSizePreview</code>），改外观立即看到效果。</li>
+    </ul>
+  </div>
+
+  <!-- F12 -->
+  <h2 id="system">F12 · 系统集成能力</h2>
+  <div class="feat">
+    <h3>常驻、更新与统计 <span class="badge b-green">基础设施</span></h3>
+    <div class="src">App/LaunchAtLoginManager.swift · App/SingleInstanceGuard.swift · App/UpdaterManager.swift · Telemetry/*</div>
+    <ul>
+      <li><strong>开机启动</strong>（ServiceManagement，现代 LoginItem API）；</li>
+      <li><strong>单实例锁</strong>：同 Bundle ID 只允许一个实例（开发 worktree 可用不同 Bundle ID 并行）；</li>
+      <li><strong>自动更新</strong>：Sparkle 2，EdDSA 签名 appcast，发布说明按 12 种语言分别生成；含降级兜底驱动（<code>UpdateFallbackUserDriver</code>）；</li>
+      <li><strong>匿名遥测</strong>（可选、默认关、仅心跳）：随机安装 ID + App/macOS 版本 + 语言 + 图标位置；无姓名/账号/网络信息/硬件序列号；生产/调试构建资格判定（<code>TelemetryEligibility</code>）；</li>
+      <li><strong>本地化</strong>：12 语言完整覆盖，含本地化键 parity 测试；App 语言可独立于系统语言选择；</li>
+      <li><strong>辅助功能</strong>：图标渲染带 Accessibility 描述（Presentation/Accessibility）。</li>
+    </ul>
+  </div>
+
+  <h2>功能 × 默认状态 × 复刻优先级速查</h2>
+  <table>
+    <tr><th>功能</th><th>默认</th><th>权限</th><th>建议复刻优先级</th></tr>
+    <tr><td>三合一图标（电池+Wi-Fi+音量）</td><td>开</td><td>无</td><td><span class="badge b-red">P0</span></td></tr>
+    <tr><td>弹层面板（概要行 + 分区编排）</td><td>开</td><td>无</td><td><span class="badge b-red">P0</span></td></tr>
+    <tr><td>设置中心（外观/分区/语言）</td><td>开</td><td>无</td><td><span class="badge b-red">P0</span></td></tr>
+    <tr><td>菜单栏 / Dock / 双开</td><td>菜单栏</td><td>无</td><td><span class="badge b-orange">P1</span></td></tr>
+    <tr><td>电池详情页</td><td>开</td><td>无</td><td><span class="badge b-orange">P1</span></td></tr>
+    <tr><td>Wi-Fi 附近网络 + 链路详情</td><td>开</td><td>定位（显示 SSID 时）</td><td><span class="badge b-orange">P1</span></td></tr>
+    <tr><td>音量滚动调节 / 设备切换</td><td>开</td><td>无</td><td><span class="badge b-orange">P1</span></td></tr>
+    <tr><td>蓝牙面板 + 设备连接管理</td><td>关</td><td>蓝牙</td><td><span class="badge b-orange">P1</span></td></tr>
+    <tr><td>蓝牙电量（含 AirPods 分体）</td><td>开（面板内）</td><td>蓝牙</td><td><span class="badge b-orange">P1</span></td></tr>
+    <tr><td>充电动画</td><td>开</td><td>无</td><td><span class="badge b-blue">P2</span></td></tr>
+    <tr><td>蓝牙音频图标替换 / 音量变蓝</td><td>关</td><td>蓝牙</td><td><span class="badge b-blue">P2</span></td></tr>
+    <tr><td>音频输入控制</td><td>关</td><td>无（麦克风状态）</td><td><span class="badge b-blue">P2</span></td></tr>
+    <tr><td>VPN / 以太网行</td><td>开</td><td>无</td><td><span class="badge b-blue">P2</span></td></tr>
+    <tr><td>附近 BLE 设备电量扫描</td><td>关</td><td>蓝牙</td><td><span class="badge b-gray">P3</span></td></tr>
+    <tr><td>AirPods 聆听模式切换</td><td>开（面板内）</td><td>蓝牙</td><td><span class="badge b-gray">P3</span></td></tr>
+    <tr><td>DDC 外接显示器音量</td><td>自动</td><td>无（私有 API）</td><td><span class="badge b-gray">P3</span></td></tr>
+    <tr><td>Apple 设备电池（libimobiledevice）</td><td>关</td><td>USB 设备</td><td><span class="badge b-gray">P3</span></td></tr>
+    <tr><td>Sparkle 自动更新 / 遥测 / 引导</td><td>更新开 / 遥测关</td><td>无</td><td><span class="badge b-blue">P2</span></td></tr>
+  </table>
+  <p class="lede" style="margin-top:26px">→ 下一页 <a href="03-techstack.html" target="_parent">03 技术栈</a>：以上功能分别建立在一整套系统框架与第三方库之上。</p>
+</div>
+</body>
+</html>

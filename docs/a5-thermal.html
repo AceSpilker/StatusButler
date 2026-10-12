@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A5 · 温度与风扇设计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.3px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:#5b3fa8}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  .c-bad{background:#fdf0ee;border-color:#f5c9c4;color:#8c2d25}
+  .toc{background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:0 0 30px;font-size:14px}
+  .toc b{display:block;margin-bottom:6px}
+  .toc a{display:block;color:var(--brand);text-decoration:none}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .feat{border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0;background:#fff}
+  .feat h3{margin:0 0 6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A5 / Thermal &amp; Fan（E11 深度设计）</div>
+  <h1>温度与风扇：对标 TG Pro 的温控模块</h1>
+  <p class="lede">状态管家的第 11 号扩展（E11）：<strong>全传感器温度监测 + 风扇转速监测与控制 + 温度警报</strong>，对标 TG Pro（Temperature Gauge Pro）与 Macs Fan Control。本页是资料调研 + 详细功能设计 + 技术方案 + 安全护栏，登记于 <a href="a4-register.html" target="_parent">A4 R-1</a>。</p>
+
+  <div class="toc"><b>本页目录</b>
+    <a href="#research">1. 竞品与开源资料调研</a>
+    <a href="#feature">2. 功能设计（TF-01 ~ TF-30）</a>
+    <a href="#tech">3. 技术方案：SMC 访问原理</a>
+    <a href="#safety">4. 安全护栏（本模块的生命线）</a>
+    <a href="#ui">5. 界面设计</a>
+    <a href="#risk">6. 风险与边界</a>
+    <a href="#redline">7. 红线修订说明</a>
+  </div>
+
+  <h2 id="research">1. 竞品与开源资料调研</h2>
+  <table>
+    <tr><th style="width:190px">产品/项目</th><th>能力</th><th>对本项目的参考价值</th></tr>
+    <tr><td><a href="https://www.tunabellysoftware.com/tgpro/" target="_blank" rel="noopener">TG Pro</a>（商业，~$15）</td><td>温度传感器显示数量最多（CPU/GPU/LCD/电源等全覆盖）、手动风扇转速、按传感器自动提速、温度/风扇通知、菜单栏多温度显示、日志导出；支持 Apple Silicon（M1 iMac、M1 Max 等专属传感器映射）</td><td><strong>对标基准</strong>：功能全集与产品形态</td></tr>
+    <tr><td>Macs Fan Control（商业，CrystalIDEA）</td><td>自定义温度→转速曲线（每风扇独立）、恒定 RPM、系统自动三模式；Apple Silicon 上首次控制风扇时<strong>要求安装特权 Helper（输管理员密码）</strong></td><td>曲线编辑器的交互范式；特权 Helper 的权限模型</td></tr>
+    <tr><td>iStat Menus（商业，Bjango）</td><td>传感器只读监测的标杆，曲线图与菜单栏显示</td><td>传感器分组展示与历史曲线 UI</td></tr>
+    <tr><td><a href="https://github.com/exelban/stats" target="_blank" rel="noopener">stats</a>（开源）</td><td>macOS 菜单栏监测器，Sensors 模块读全部温度 + 风扇 RPM，<strong>只读不控制</strong>；维护了按机型的传感器键位目录（Intel + Apple Silicon）</td><td>★ 最重要的技术参考：机型→键位映射表、读取实现（Swift）</td></tr>
+    <tr><td><a href="https://github.com/hholtmann/smcFanControl" target="_blank" rel="noopener">smcFanControl</a>（开源，Intel 时代）</td><td>经典风扇控制：抬高最小转速（只升不降），写 SMC 键 <code>FS! </code>（强制模式）与 <code>F0Md</code>（目标转速）；Intel 上用户态直接可写</td><td>★ 风扇写入键位与"只升不降"安全哲学</td></tr>
+    <tr><td>Core-Monitor、beltex/smctemp（开源）</td><td>Apple Silicon 监测（温度/功耗/风扇）；smctemp 是读 Apple Silicon CPU 温度的最小 CLI 实现</td><td>Apple Silicon 读取路径验证</td></tr>
+  </table>
+  <div class="callout c-info">调研结论：① <strong>读温度/转速</strong>——用户态直接读 SMC，无权限门槛，开源实现充分；② <strong>写风扇转速</strong>——Intel 上用户态可直接写，<strong>Apple Silicon 上需要特权 Helper</strong>（Macs Fan Control / TG Pro 均如此）；③ 传感器键位因机型而异，必须维护"机型目录 + 探测兜底"，stats 的映射表可直接借鉴。</div>
+
+  <h2 id="feature">2. 功能设计（TF-01 ~ TF-30）</h2>
+
+  <h3>TF-A 温度监测</h3>
+  <div class="feat">
+    <h3>TF-01 传感器全景监测</h3>
+    <ul>
+      <li>读取并分组展示：<strong>CPU</strong>（封装/各性能核/各能效核）、<strong>GPU</strong>（核心/显存附近）、<strong>电池/电源</strong>、<strong>存储</strong>（SSD）、<strong>主板/外壳</strong>（掌托、进风口）、<strong>其他外设传感器</strong>——凡本机 SMC 暴露的温度键全部收录（对标 TG Pro"传感器最多"）。</li>
+      <li><strong>机型目录</strong>：按设备型号（如 MacBookPro18,3 / Mac14,2）映射该机型的键位清单与中文名（目录数据借鉴 stats 的映射 + 自测补充）；目录没有的机型走<strong>通用探测</strong>（按已知键名模式扫描），探测结果允许用户手动隐藏/命名。</li>
+      <li>异常值防御：传感器故障读数（如 -127°C）标记"不可用"而非显示。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>TF-02 图标与槽位集成（联动 E1）</h3>
+    <ul>
+      <li>温度成为 E1 信号槽的内置源：<strong>CPU 温度 / GPU 温度 / 最高温</strong> 三种选择，图标下部显示温度数字 + 热度分级点（绿/黄/红）。</li>
+      <li>温度超阈值时<strong>整个图标温度区变红</strong>（可选），与电池低电红色同层级提示。</li>
+      <li>菜单栏 20pt 图标默认只显示一个温度；Dock 大图标可同屏两路温度。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>TF-03 弹层温控面板（联动 S3 分区）</h3>
+    <ul>
+      <li>弹层新增"温度与风扇"分区：顶部 <strong>当前最高温 + 来源传感器名</strong>大字卡；下面按 CPU/GPU/存储/电池/其他分组列出传感器（名称 + °C + 迷你走势条）。</li>
+      <li>点击任一传感器 → 详情页：60 分钟曲线（联动 E10 历史缓冲）、峰值/均值。</li>
+      <li>传感器行可收藏置顶（收藏的进图标槽位候选）。</li>
+    </ul>
+  </div>
+
+  <h3>TF-B 风扇监测</h3>
+  <div class="feat">
+    <h3>TF-10 风扇实时状态</h3>
+    <ul>
+      <li>枚举风扇（键 <code>FNum</code> 计数，<code>F0ID/F1ID…</code> 名称）：每风扇显示<strong>当前 RPM / 厂商最小 RPM / 最大 RPM</strong>，左右/多个风扇并排卡片。</li>
+      <li>转速迷你走势 + 当前模式徽标（系统自动 / 手动恒速 / 曲线）。</li>
+      <li>风扇 RPM 也可作为 E1 槽位源；无风扇机型（MacBook Air）自动降级为纯温度模式，风扇区隐藏。</li>
+    </ul>
+  </div>
+
+  <h3>TF-C 风扇控制（核心）</h3>
+  <div class="feat">
+    <h3>TF-20 三种控制模式 <span class="badge b-red">需特权 Helper（Apple Silicon）</span></h3>
+    <ul>
+      <li><strong>系统自动</strong>（默认）：不写入，仅监测——安装 App 后零风险起步。</li>
+      <li><strong>手动恒速</strong>：滑杆把风扇设为固定 RPM（钳制在厂商 min–max 区间内；遵循 smcFanControl 的"只升不降"哲学可选开启：仅允许把转速设在系统策略之上，防止压制散热）。</li>
+      <li><strong>自定义曲线</strong>：温度→转速多段折线（对标 Macs Fan Control），每风扇独立一条；控温源可选任一传感器（默认 CPU 封装温度）。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>TF-21 曲线编辑器</h3>
+    <ul>
+      <li>横轴温度（30–110°C）纵轴转速（min–max RPM），可拖动控制点、双击加点、右键删点；实时预览当前工作点（当前温度↔当前转速的动画点）。</li>
+      <li><strong>滞回带（hysteresis）</strong>：升降温各用一条曲线（默认相差 3°C），防温度在阈值附近来回抖动导致转速锯齿。</li>
+      <li>内置预设：安静 / 平衡 / 性能 / 全速；用户曲线可保存命名、随主题系统（E7）导出分享。</li>
+    </ul>
+  </div>
+  <div class="feat">
+    <h3>TF-22 控制引擎纪律</h3>
+    <ul>
+      <li>曲线引擎为<strong>纯函数</strong>（温度序列 + 曲线 + 滞回状态 → 目标 RPM），可完整单元测试；写 SMC 的间隔节流（默认 ≥ 2s，或目标变化 &gt; 200 RPM 才写）。</li>
+      <li><strong>退出/崩溃恢复</strong>：接管时持久化"已接管"标记；正常退出、注销、关机时写回系统自动模式；异常退出后，下次启动检测到标记即先写回系统模式再询问是否恢复接管（绝不带着用户的风扇设置悄悄跑）。</li>
+      <li>睡眠/唤醒：睡眠时放弃接管，唤醒后重应用；外接电源↔电池切换可配置不同曲线（电池模式转速上限更低）。</li>
+    </ul>
+  </div>
+
+  <h3>TF-D 警报与日志</h3>
+  <div class="feat">
+    <h3>TF-30 温度警报</h3>
+    <ul>
+      <li>按传感器设阈值（默认 CPU 封装 90°C / 电池 40°C）：达到时发系统通知，可选"自动临时全速"应急动作；恢复正常发解除通知。</li>
+      <li>风扇转速异常警报（转速为 0 但应为旋转中）——可能预示硬件故障，高级用户刚需。</li>
+      <li>所有警报联动 E10 事件日志，温度历史可导出 CSV（对标 TG Pro 日志导出）。</li>
+    </ul>
+  </div>
+
+  <h2 id="tech">3. 技术方案：SMC 访问原理</h2>
+  <pre>用户态 App ──IOKit──▶ AppleSMC 服务（系统自带内核扩展暴露的 user client）
+                        │  IOConnectCallStructMethod：
+                        │  SMCReadKey / SMCWriteKey（4 字符键 + 类型化值）
+                        ▼
+              SMC（系统管理控制器：温度传感器 / 风扇 / 电源）</pre>
+  <h3>键位清单（核心）</h3>
+  <table>
+    <tr><th style="width:120px">键</th><th>含义</th><th style="width:70px">读/写</th><th style="width:90px">权限</th></tr>
+    <tr><td><code>FNum</code></td><td>风扇数量</td><td>读</td><td>用户态</td></tr>
+    <tr><td><code>F{n}Ac</code></td><td>风扇 n 实际转速（RPM，fpe2 类型）</td><td>读</td><td>用户态</td></tr>
+    <tr><td><code>F{n}Mn / F{n}Mx</code></td><td>风扇 n 厂商最小/最大转速</td><td>读</td><td>用户态</td></tr>
+    <tr><td><code>F{n}ID</code></td><td>风扇 n 名称</td><td>读</td><td>用户态</td></tr>
+    <tr><td><code>TC0P / TC0D…</code></td><td>CPU 近端/核心温度；GPU：TG0P 等；电池：TB1T…；掌托：Ts0S…（<strong>随机型大量变化</strong>，走机型目录）</td><td>读</td><td>用户态</td></tr>
+    <tr><td><code>FS! </code></td><td>风扇强制模式（01=系统自动，02=强制手动）</td><td>写</td><td>Intel 用户态可写；<strong>Apple Silicon 需特权 Helper</strong></td></tr>
+    <tr><td><code>F{n}Md</code></td><td>风扇 n 目标转速（写入值）</td><td>写</td><td>同上</td></tr>
+  </table>
+  <h3>权限模型与 Helper 设计</h3>
+  <ul>
+    <li><strong>读路径（TF-01/02/03/10）无特权</strong>：直接 IOKit 连接 AppleSMC 读取，与 stats 相同——温度监测功能对全部用户默认可用。</li>
+    <li><strong>写路径（TF-20+）需要特权</strong>：Apple Silicon 上用户态无法写风扇键，需要特权 Helper。采用苹果官方 <code>SMAppService</code> 机制安装 <strong>LaunchDaemon</strong>（仅暴露一个本地 XPC 接口：写入键白名单校验后的风扇命令），首次启用控制时向用户解释并请求管理员授权；卸载随 App 一键完成。这是 Macs Fan Control / TG Pro 的同款路线，也是唯一不动系统完整性的做法。</li>
+    <li>Helper 拒绝执行白名单（<code>FS! </code>、<code>F0Md/F1Md…</code>）之外的任何 SMC 写入——充电/电源域键一概不碰（红线，见第 7 节）。</li>
+  </ul>
+
+  <h2 id="safety">4. 安全护栏（本模块的生命线）</h2>
+  <div class="callout c-bad"><strong>风扇是散热安全的最后一道闸，本模块按"最坏情况也不伤机器"设计：</strong></div>
+  <ol>
+    <li><strong>写入域白名单</strong>：代码层守卫 + 独立模块封装 + 守卫测试扫描（延续 DDC 的治理方式），任何风扇域之外的 SMC 写入直接编译期/测试期拦截。</li>
+    <li><strong>边界钳制</strong>：所有写入 RPM 钳制在厂商 min–max；默认开启"只升不降"（用户可关闭但需二次确认）。</li>
+    <li><strong>异常自愈</strong>：退出/崩溃/注销恢复系统自动模式（持久标记 + 启动自愈，见 TF-22）；温度超过 105°C 应急全速并通知。</li>
+    <li><strong>节流与去抖</strong>：写入间隔 ≥ 2s 或变化显著才写；滞回带防锯齿。</li>
+    <li><strong>透明可卸</strong>：弹层常显当前模式徽标；设置内一键"恢复系统控制并卸载 Helper"；模块整体可摘除（编译开关），摘除后其余功能不受影响。</li>
+  </ol>
+
+  <h2 id="ui">5. 界面设计</h2>
+  <div class="grid2">
+    <div><strong>图标（20pt 菜单栏 / Dock）</strong>
+      <ul>
+        <li>槽位源显示：<code>78°</code> 数字 + 3 档热度点（&lt;70 绿 / 70–90 黄 / &gt;90 红）</li>
+        <li>超阈值：温度数字整体变红闪烁一次</li>
+        <li>Dock 图标：可同时显示 CPU/GPU 两路温度</li>
+      </ul>
+    </div>
+    <div><strong>弹层分区"温度与风扇"</strong>
+      <ul>
+        <li>顶卡：最高温大字 + 来源 + 迷你风扇转速条</li>
+        <li>传感器分组列表（可收藏/隐藏）</li>
+        <li>风扇卡片：RPM + 模式徽标 + 快捷"系统/恒速/曲线"切换</li>
+        <li>下钻：曲线编辑器 / 传感器详情曲线 / 阈值设置</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2 id="risk">6. 风险与边界</h2>
+  <table>
+    <tr><th>风险</th><th>应对</th></tr>
+    <tr><td>传感器键位无官方文档，机型差异大、系统更新可能增删</td><td>机型目录（借鉴 stats）+ 通用探测 + 用户可编辑；键读取失败静默降级</td></tr>
+    <tr><td>Apple Silicon 写风扇依赖非公开行为，未来 macOS 可能收紧</td><td>写失败自动回退"系统自动"并提示；版本白名单验证后再放开（同 E3 策略）</td></tr>
+    <tr><td>特权 Helper 是本项目唯一提权点</td><td>SMAppService 官方机制、XPC 白名单、一键卸载、独立仓库目录与审计</td></tr>
+    <tr><td>无风扇机型 / 台式多风扇机型</td><td>按 <code>FNum</code> 自适应：0 风扇纯温度模式；多风扇逐个卡片与曲线</td></tr>
+  </table>
+
+  <h2 id="redline">7. 红线修订说明（A2·S12 红线二）</h2>
+  <p>原红线二"不写 SMC、不附带特权进程"针对的是<strong>充电/电源越权</strong>（Status Trio 的边界）。E11 经产品决策（A4·R-1）引入风扇控制后，修订为：</p>
+  <div class="callout c-warn"><strong>修订后红线二</strong>：禁止任何<strong>充电/电源域</strong>的 SMC 写入与特权操作；风扇域 SMC 写入（<code>FS! </code>、<code>F{n}Md</code>）为本项目唯一例外，必须满足：独立模块 + 键白名单 + SMAppService 官方 Helper + 退出自愈 + 一键卸载。温度/转速<strong>读取</strong>不受限制。</div>
+  <p class="lede" style="margin-top:26px">→ 依赖关系：E1 槽位（图标位）/ E10 历史（曲线与日志）/ E2 动作中心（"全速应急"按钮）/ E7 主题（曲线分享）/ <a href="a6-widgets.html" target="_parent">A6 小组件（温度卡 WG-02 / 风扇卡 WG-03 / 组件内模式切换）</a>；工程落位见 <a href="b1-tech.html" target="_parent">B1 监控层 ThermalController</a>。</p>
+</div>
+</body>
+</html>
