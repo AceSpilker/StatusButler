@@ -156,7 +156,7 @@
   <p>登记规则：任务完成的同一提交里更新本表对应行；证据 = 测试运行的命令与摘要 + 提交号；失败项必须附问题编号与修复提交。</p>
   <table>
     <tr><th style="width:62px">任务号</th><th style="width:96px">日期</th><th>测试内容（命令 / 用例数 / 结果）</th><th style="width:90px">证据提交</th></tr>
-    <tr><td>T-001</td><td>2026-10-12</td><td>swift build（debug+release）✓ · build-app.sh 组包冒烟：状态管家.app 组装 + ad-hoc 签名 ✓（Mimosa 建议已采纳：参数白名单校验）</td><td>本提交</td></tr>
+    <tr><td>T-001</td><td>2026-10-12</td><td>swift build（debug+release）✓ · build-app.sh 组包冒烟：状态管家.app 组装 + ad-hoc 签名 ✓（Mimosa 建议已采纳：参数白名单校验）；附注：CI 首跑失败（swiftly 安装环节脆弱）→ 改用 runner 自带 Xcode 工具链修复</td><td>本提交</td></tr>
     <tr><td>T-002</td><td>2026-10-12</td><td>swift build 12.3s ✓（组合根装配 + 四层目录 + 快照相等性语义单测见 T-003）</td><td>本提交</td></tr>
     <tr><td>T-003</td><td>2026-10-12</td><td>swift test：<strong>4 套件 10 用例全部通过</strong>（快照 4 / 设置 3 / Store 2 / 红线守卫 1）；AGENTS.md 落库</td><td>本提交</td></tr>
   </table>
