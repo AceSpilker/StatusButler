@@ -5,13 +5,20 @@ import Foundation
 public final class AppEnvironment {
     private let store: SystemStatusStore
     private let settings: SettingsStore
+    private let statusBarController: StatusBarController
 
-    public init(store: SystemStatusStore, settings: SettingsStore) {
+    public init(
+        store: SystemStatusStore,
+        settings: SettingsStore,
+        statusBarController: StatusBarController
+    ) {
         self.store = store
         self.settings = settings
+        self.statusBarController = statusBarController
     }
 
     public func start() {
+        statusBarController.startObserving()
         store.start()
     }
 
@@ -28,6 +35,7 @@ public final class AppEnvironment {
             volume: StaticVolumeMonitor(VolumeState(level: 0, isMuted: false)),
             refreshInterval: .seconds(settings.refreshIntervalSeconds)
         )
-        return AppEnvironment(store: store, settings: settings)
+        let controller = StatusBarController(store: store, settings: settings)
+        return AppEnvironment(store: store, settings: settings, statusBarController: controller)
     }
 }
