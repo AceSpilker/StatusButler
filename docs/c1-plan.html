@@ -144,7 +144,7 @@
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
     <tr><td>T-050</td><td>DDC 亮度/对比度 + 每 App 音量（虚拟声卡驱动 opt-in）</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E14/E20</a></td><td>W12</td><td><span class="badge b-gray">未开始</span></td></tr>
     <tr><td>T-051</td><td>熄屏不睡眠（断言+守护模式）+ 全局热键</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E21</a></td><td>W12</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-052</td><td>自动化（butler:// + CLI + App Shortcuts）+ iCloud 同步</td><td><a href="a9-control-personalize.html" target="_parent">A9·AU/IC</a></td><td>W12~W13</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-052</td><td>自动化（butler:// + CLI + App Shortcuts）+ iCloud 同步</td><td><a href="a9-control-personalize.html" target="_parent">A9·AU/IC</a></td><td>W12~W13</td><td><span class="badge b-orange">进行中</span></td></tr>
     <tr><td>T-053</td><td>菜单栏整理（私有视图树 + 版本白名单）+ iDevice 电量 Helper</td><td><a href="a9-control-personalize.html" target="_parent">A9·MB</a> <a href="a2-features.html#s8" target="_parent">A2·S8</a></td><td>W13</td><td><span class="badge b-gray">未开始</span></td></tr>
     <tr><td>T-054</td><td>桌面小组件（快照共享 + 六族组件 + 交互 + 刷新节流）</td><td><a href="a6-widgets.html" target="_parent">A6</a></td><td>W13</td><td><span class="badge b-gray">进行中</span></td></tr>
     <tr><td>T-055</td><td>遥测（可选默认关）+ Sparkle 更新（EdDSA appcast）</td><td><a href="a2-features.html#s11" target="_parent">A2·S11</a></td><td>W13</td><td><span class="badge b-gray">未开始</span></td></tr>
@@ -183,6 +183,7 @@
     <tr><td>T-040</td><td>2026-10-12</td><td>Agent M 分支 177 测试；重定向金丝雀钉死攻击域零请求；UI 接线（左键弹层/右键菜单/设置菜单/首启引导）由主线完成，合并后全量 <strong>39 套件 303 用例连跑两次全绿</strong>（并行套件干扰已用 .serialized 修复）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-054a</td><td>2026-10-12</td><td>Agent N 分支 179 测试；跨进程 JSON 契约字面钉死（T-054 状态：进行中，WidgetKit target 待建）；UI 接线（左键弹层/右键菜单/设置菜单/首启引导）由主线完成，合并后全量 <strong>39 套件 303 用例连跑两次全绿</strong>（并行套件干扰已用 .serialized 修复）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-054b</td><td>2026-10-12</td><td>Agent S 分支 322 测试（+19：六族显示模型映射全分支/热度档位 79.9·80·90 边界/陈旧档位 118·120·300/时间线工厂注入临时目录/族注册表深链白名单互证）；视图+Provider 整文件 canImport(WidgetKit) 保护编进 Core，扩展 target 迁移零改动；性能 CPU/MEM 文本与风扇模式留 T-054c 喂入（快照契约 schema 1 无此二域）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-052</td><td>2026-10-12</td><td>自动化引擎半场：butler:// URL 路由三态（notOurs/rejected/handled）+ statusbutler CLI 引擎（status 多行文本 / --json Codable 直出 / 帮助白名单自动段 / 退出码规约 0-1-2-3）+ 执行器绑定骨架（示例 volume 接线，键域与注册表钉死 AC-05）（Agent R 分支 22 测试；App Shortcuts / iCloud 同步 / 可执行 target 挂载与 Info.plist 注册留集成半场）；分支全量 <strong>43 套件 325 用例全部通过</strong></td><td>agent 分支→merge</td></tr>
   </table>
   <h3>行模板</h3>
   <pre>T-0XX | 2026-MM-DD | swift test（32 用例，32 通过/0 失败）+ 契约脚本 verify-xxx ✓ | <a>commit hash</a>
