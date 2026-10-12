@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A13 · 用户使用指南 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:880px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:18px 20px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 12px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:12px;font-weight:600;vertical-align:2px}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A13 / User Guide</div>
+  <h1>用户使用指南</h1>
+  <p class="lede">面向使用者的操作手册：从安装到菜单栏、弹层、设置、槽位、命令行，以及 0.1.0 的已知限制与常见问题。设计规格请回 <a href="a2-features.html" target="_parent">A2 功能规格</a>；本文只写<strong>已随 0.1.0 实装</strong>的行为。</p>
+
+  <h2>三十秒上手</h2>
+  <ol>
+    <li>下载 <code>StatusButler-0.1.0.dmg</code>（校验 <code>.sha256</code> 后更稳），把「状态管家」拖进「应用程序」；</li>
+    <li><strong>首次打开</strong>：App 为 ad-hoc 签名，直接双击会被拦截——在 Finder 里<strong>右键 → 打开 → 打开</strong>，或到「系统设置 → 隐私与安全性」底部点「仍要打开」；</li>
+    <li>菜单栏出现三合一图标即安装成功；App 不进 Dock、只在菜单栏与（可选）Dock 工作。</li>
+  </ol>
+  <div class="callout c-info">📦 从源码构建：仓库内 <code>statusbutler/scripts/build-app.sh release no-open</code> 产出 <code>dist/状态管家.app</code>。发布说明见仓库 <code>release-notes/0.1.0/</code>。</div>
+
+  <h2>菜单栏图标</h2>
+  <ul>
+    <li><strong>一个图标看三样</strong>：上中下三段分别是电池、网络、音量的当前状态，深浅色外观自动跟随系统；</li>
+    <li><strong>充电呼吸</strong>：接入电源后图标带呼吸式动效（系统开启「减弱动态效果」时自动静止）；</li>
+    <li><strong>左键</strong>＝打开状态弹层；<strong>右键</strong>＝菜单（版本号 / 设置… / 退出状态管家，设置快捷键 ⌘,）；</li>
+    <li>图标大小可在设置的「状态图标外观」分区调整，并实时预览。</li>
+  </ul>
+
+  <h2>弹层面板</h2>
+  <p>左键图标展开，六个分区一览当前快照；分区数据<strong>可见才加载</strong>——弹层关着就不采样，不看零开销：</p>
+  <table>
+    <tr><th style="width:110px">分区</th><th>内容</th></tr>
+    <tr><td><strong>电池</strong></td><td>电量百分比、充放电状态（IOKit 读取）</td></tr>
+    <tr><td><strong>网络</strong></td><td>Wi-Fi 名称与信号格 / 有线 / 离线，链路状态</td></tr>
+    <tr><td><strong>音量</strong></td><td>当前音量与静音状态（0.1.0 中滑杆为展示；调节走 CLI / 自动化，滑杆直调随后续版本接入）</td></tr>
+    <tr><td><strong>蓝牙</strong></td><td>已配对设备与电量（含 AirPods 分体仓位）</td></tr>
+    <tr><td><strong>温度</strong></td><td>最高温度与风扇均速（SMC 读取）</td></tr>
+    <tr><td><strong>性能</strong></td><td>CPU / 内存 / 网速当前值</td></tr>
+  </table>
+
+  <h2>设置中心</h2>
+  <p>右键图标 →「设置…」打开，左栏四分区：</p>
+  <ul>
+    <li><strong>通用</strong>：语言（简体中文 / English）、开机自动启动（0.1.0 为占位项，登录项随后续版本接入）；</li>
+    <li><strong>状态图标外观</strong>：图标大小实时预览、底部槽位选择、深浅色主题（6 套预设）；</li>
+    <li><strong>状态面板</strong>：充电指示、槽位轮换节奏等弹层行为；</li>
+    <li><strong>关于</strong>：版本信息与命令速查。</li>
+  </ul>
+
+  <h2>底部槽位</h2>
+  <p>图标最下方的小格是<strong>信号槽</strong>：从内置源（温度、风扇转速、网速、CPU 等日租源）里选一个常驻，或在设置里选择轮换。菜单栏空间宝贵，一格只放一件事；想换就 <code>butler slot cycle</code> 或到设置里改。</p>
+
+  <h2>命令行（butler CLI）</h2>
+  <p>二进制随构建产出（<code>.build/release/butler</code>），自行复制进 PATH。查询直读主 App 快照；动作经 <code>butler://</code> 转发主 App 执行：</p>
+  <pre>butler status              # 人类可读快照（需主 App 在运行）
+butler status --json       # 机器可读 JSON，脚本统一按 JSON 解析 stdout
+butler volume 50           # 设定音量 50（主 App 经 AppleScript 落地）
+butler volume up|down      # 步进；butler mute 静音
+butler panel thermal       # 打开弹层直达温度分区（battery/network 同理）
+butler fan 4000            # 风扇恒定 4000 RPM；butler fan auto 恢复自动
+butler slot cycle          # 底部槽位轮换
+butler theme apply &lt;主题名&gt;  # 应用主题
+butler screen off          # 熄屏不睡眠
+butler --help              # 全部动词 + 退出码表</pre>
+  <table>
+    <tr><th style="width:230px">退出码</th><th>含义（脚本据此分支）</th></tr>
+    <tr><td><code>0</code></td><td>成功（stdout 有载荷）</td></tr>
+    <tr><td><code>1</code></td><td>未知命令（白名单外动词）</td></tr>
+    <tr><td><code>2</code></td><td>快照不可用：主 App 未运行或未产出首帧；<code>--json</code> 模式 stdout 恒为 <code>{"error":"app-not-running"}</code></td></tr>
+    <tr><td><code>3</code></td><td>被拒（参数非法 / 越界 / 执行器拒绝）</td></tr>
+  </table>
+
+  <h2>桌面小组件 <span class="badge b-gray">即将</span></h2>
+  <p>六族小组件（总览 / 温度 / 风扇 / 性能 / 日程 / 天气）的数据层已就绪——主 App 持续把快照原子写入共享文件，未来扩展按同一契约读取。WidgetKit 扩展未随 0.1.0 发布，组件敬请期待下个版本（设计见 <a href="a6-widgets.html" target="_parent">A6 桌面小组件设计</a>）。</p>
+
+  <h2>已知限制（0.1.0）</h2>
+  <ul>
+    <li><strong>ad-hoc 签名与首开放行</strong>：无 Developer ID 证书、未公证。首启需右键打开或系统设置放行，升级新版可能需再次放行；</li>
+    <li><strong>沙盒网络限制</strong>：脚本插件槽以 <code>sandbox-exec</code> 禁网隔离，但 macOS 26 上 <code>network*</code> 拒绝规则失效、部分机型缺少该工具，此时插件降级为「无沙盒标记 + 严格超时」模式（替代方案登记 T-035b）；天气模块仅访问 Open-Meteo 白名单域（URL / DNS / 重定向三道闸）；</li>
+    <li><strong>无自动更新</strong>：Sparkle 更新链未接入，新版本手动关注 Releases；</li>
+    <li><strong>开机自启动</strong>：设置页为占位项；</li>
+    <li><strong>功能面</strong>：iDevice 电量、每 App 独立音量、弹层音量滑杆直调未含；</li>
+    <li><strong>架构</strong>：DMG 仅 arm64（Apple Silicon），Intel 请从源码构建。</li>
+  </ul>
+
+  <h2>常见问题（FAQ）</h2>
+  <table>
+    <tr><th style="width:240px">问题</th><th>处置</th></tr>
+    <tr><td>双击打不开，提示无法验证开发者？</td><td>正常现象（ad-hoc 签名）。Finder 右键 App →「打开」→ 再点「打开」；或「系统设置 → 隐私与安全性」底部点「仍要打开」。</td></tr>
+    <tr><td>菜单栏看不到图标？</td><td>菜单栏图标过多会被系统折叠或挤出——移除不常用图标，或重新登录会话。</td></tr>
+    <tr><td><code>butler status</code> 退出码 2？</td><td>主 App 未运行或刚启动未产出首帧。先启动状态管家再查询；脚本侧请按退出码 2 分支重试。</td></tr>
+    <tr><td>CLI 输出能直接喂给 jq 吗？</td><td>可以。<code>butler status --json</code> 是键排序的稳定 JSON；注意失败时 stdout 也是 JSON（<code>{"error":"app-not-running"}</code>），先看退出码再解析。</td></tr>
+    <tr><td>风扇控制安全吗？</td><td>风扇域是产品红线里唯一的 SMC 写入白名单，带键白名单与自愈护栏；充电域硬件永不写入。详见 <a href="a5-thermal.html" target="_parent">A5 温度与风扇设计</a>。</td></tr>
+    <tr><td>它会收集我的数据吗？</td><td>不会。遥测引擎默认关闭；不碰 Wi-Fi 密码与钥匙串；隐私权限最小化（红线见 <a href="a2-features.html#s12" target="_parent">A2·S12</a>）。</td></tr>
+    <tr><td>小组件什么时候有？</td><td>数据层已就绪，WidgetKit 扩展排在发布计划里；当前菜单栏 + 弹层 + CLI 是完整可用面。</td></tr>
+  </table>
+
+  <div class="callout c-info">📌 本文随版本演进；行为与本文不符时以 App 内「关于」页版本号为准，并欢迎提 Issue。开发侧全量回归入口：<code>statusbutler/scripts/full-regression.sh</code>（T-057）。</div>
+</div>
+</body>
+</html>
