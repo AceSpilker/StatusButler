@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C1 · 开发规划与追踪 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--code:#eef1f6;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:920px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:30px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16.5px;color:var(--sub);margin-bottom:28px}
+  h2{font-size:21px;margin:44px 0 14px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16.5px;margin:26px 0 10px}
+  p{margin:10px 0}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:5px 0}
+  strong{font-weight:650}
+  code{background:var(--code);border-radius:5px;padding:1.5px 6px;font-size:.88em;font-family:"SF Mono",Menlo,Consolas,monospace}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.2px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:8px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:14px 18px;margin:16px 0;font-size:14px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  .c-warn{background:#fdf6e7;border-color:#f3ddb0;color:#7a5a12}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  /* 仪表盘 */
+  .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:12px 16px;background:var(--soft)}
+  .stat .n{font-size:26px;font-weight:750;color:var(--brand)}
+  .stat .l{font-size:12px;color:var(--sub)}
+  .bar{height:10px;border-radius:6px;background:#e6eaef;overflow:hidden;margin:6px 0 2px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#0a7d6f,#2fb59f);width:0}
+  pre{background:#0f1420;color:#dbe4f3;border-radius:12px;padding:16px 18px;overflow-x:auto;margin:12px 0;font-size:12.5px;line-height:1.7;font-family:"SF Mono",Menlo,Consolas,monospace}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">C1 / Development Plan &amp; Tracking</div>
+  <h1>开发规划与追踪</h1>
+  <p class="lede">全部功能的<strong>任务排期、完成状态、测试报告、验收报告</strong>都在本页，随开发推进持续更新。注意：排期是<strong>工程顺序</strong>（依赖关系决定先后），不是功能取舍——所有功能仍在同一阶段的全量范围内。</p>
+
+  <h2>📊 总览仪表盘（自动统计）</h2>
+  <div class="dash">
+    <div class="stat"><div class="n" id="d-total">–</div><div class="l">任务总数</div></div>
+    <div class="stat"><div class="n" id="d-done" style="color:var(--ok)">–</div><div class="l">已完成</div></div>
+    <div class="stat"><div class="n" id="d-doing" style="color:var(--warn)">–</div><div class="l">进行中</div></div>
+    <div class="stat"><div class="n" id="d-todo" style="color:var(--sub)">–</div><div class="l">未开始</div></div>
+    <div class="stat"><div class="n" id="d-pct">–</div><div class="l">完成率</div><div class="bar"><i id="d-bar"></i></div></div>
+  </div>
+
+  <h2>一、开发规范（写码前必读）</h2>
+  <h3>1.1 仓库与分支</h3>
+  <ul>
+    <li>分支模型：<code>main</code> 常绿 + 短生命周期功能分支（<code>feat/xxx</code>、<code>fix/xxx</code>、<code>docs/xxx</code>）；小改动直进 main，大改动（跨子系统/触碰图标渲染）走分支并跑全量测试。</li>
+    <li>提交信息：Conventional Commits + 中文描述（<code>feat: 温度监控读取路径 (T-025)</code>）；<strong>每个提交在末行标注任务号</strong>，保证可追溯。</li>
+    <li>推送节奏：每完成一个任务即 commit+push；CI（GitHub Actions）跑构建与测试。</li>
+  </ul>
+  <h3>1.2 Swift 编码规范</h3>
+  <ul>
+    <li>Swift 6 严格并发：状态仓库与控制器 <code>@MainActor</code>；<code>nonisolated(unsafe)</code> 仅限 teardown 场景并注释论证；不把 actor 隔离方法直接当函数值传。</li>
+    <li>命名：类型大驼峰、方法动词开头；监控器协议以 <code>-ing</code> 结尾（<code>BatteryMonitoring</code>）；设置键与 UserDefaults 键一一对应并集中声明。</li>
+    <li>能效铁律：采样器"有人看才运行"；定时器带宽容忍；订阅一律 <code>removeDuplicates()</code>。</li>
+    <li>注释只写"为什么"（约束/边界/坑），不写"是什么"。</li>
+  </ul>
+  <h3>1.3 架构铁律（违反 = 打回）</h3>
+  <ol>
+    <li>四层依赖单向：Monitoring → Store → Presentation → UI，禁止反向 import；</li>
+    <li>菜单栏与 Dock 图标改动必须同一提交内两端同步（设置/订阅/缓存/渲染/测试五处）；</li>
+    <li>能画进图标的进 <code>StatusSnapshot</code>，只服务面板的走旁路属性；</li>
+    <li>四条产品红线（A2·S12）+ 守卫扫描测试钉死；</li>
+    <li>改功能先改规格文档（A2/A5~A12），再写代码——文档是唯一事实源。</li>
+  </ol>
+  <h3>1.4 测试规范（完成的定义）</h3>
+  <ul>
+    <li>框架：Swift Testing（<code>import Testing</code>，免 Xcode）；监控器全部注入假实现测试；映射层纯函数直测。</li>
+    <li><strong>一个任务"已完成"必须同时满足</strong>：① 代码合并 ② 单测通过并登记测试报告（第四节）③ 契约脚本通过（涉及图标/发布时）④ 文档同步。</li>
+    <li>提交前检查：<code>swift build &amp;&amp; swift test</code> 全绿（CI 重复执行）。</li>
+  </ul>
+
+  <h2>二、任务排期总表（35 个任务 · 按工程批次）</h2>
+  <p>状态图例：<span class="badge b-gray">未开始</span> <span class="badge b-orange">进行中</span> <span class="badge b-green">已完成</span> <span class="badge b-red">阻塞</span>。排期为相对周（W1 起），单人开发节奏，允许浮动；批次顺序由依赖决定。</p>
+
+  <h3>批次 1 · 工程基建（W1~W2）</h3>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
+    <tr><td>T-001</td><td>SPM 脚手架（Package.swift / 目录 / Info.plist / build-app.sh / test.sh）+ GitHub Actions CI</td><td><a href="b1-tech.html#repo" target="_parent">B1·仓库</a></td><td>W1</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-002</td><td>组合根 + 四层架构骨架 + SettingsStore 基础（UserDefaults 读写 + @Published）</td><td><a href="b1-tech.html#arch" target="_parent">B1·架构</a></td><td>W1</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-003</td><td>测试基建（Swift Testing 模板 / 假监控器协议桩）+ AGENTS.md + 守卫扫描测试</td><td>1.3/1.4</td><td>W2</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h3>批次 2 · 图标系统（W2~W4）</h3>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
+    <tr><td>T-010</td><td>三合一图标渲染管线：120×120 几何 / 场景状态 / 墨水居中补偿 / 渲染缓存与合并刷新</td><td><a href="a2-features.html#s1" target="_parent">A2·S1</a></td><td>W2~W3</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-011</td><td>菜单栏 StatusBarController + 弹层壳（NSPopover 锚定/多屏）+ 右键菜单</td><td><a href="a2-features.html#s3" target="_parent">A2·S3</a></td><td>W3</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-012</td><td>Dock 渲染（同源场景状态）+ 激活策略切换 + Dock 点击行为</td><td><a href="a2-features.html#s2" target="_parent">A2·S2</a></td><td>W3~W4</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-013</td><td>充电动画时间线系统（相位/调色/帧缓存/减弱动态/睡眠停止）</td><td><a href="a2-features.html#s1" target="_parent">A2·S1</a></td><td>W4</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-014</td><td>E1 信号槽系统：SlotSource 协议 + 注册表 + SlotScheduler + 9 内置源接线</td><td><a href="a8-slots-info.html" target="_parent">A8·SL</a></td><td>W4</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h3>批次 3 · 监控域（W5~W8）</h3>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
+    <tr><td>T-020</td><td>电池监控 + 详情（IOKit 功率/电压/电流/循环 + 低电模式）</td><td><a href="a2-features.html#s4" target="_parent">A2·S4</a></td><td>W5</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-021</td><td>Wi-Fi 监控（CoreWLAN + SSID 授权流）+ 连接监测 + 链路详情 + 附近网络</td><td><a href="a2-features.html#s5" target="_parent">A2·S5</a></td><td>W5~W6</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-022</td><td>音量监控与操作（CoreAudio 属性监听 + 滑杆/滚动调节 + 设备切换 + 反馈音）</td><td><a href="a2-features.html#s6" target="_parent">A2·S6</a></td><td>W6</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-023</td><td>蓝牙面板（配对列表/连接操作/HID 确认/多源电量/AirPods 分体/附近 BLE）</td><td><a href="a2-features.html#s7" target="_parent">A2·S7</a></td><td>W6~W7</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-024</td><td>VPN / 以太网链路行（SystemConfiguration + NWPath 旁路状态）</td><td><a href="a2-features.html#s5" target="_parent">A2·S5</a></td><td>W7</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-025</td><td>温度/风扇读取路径（AppleSMC + 机型目录 + 探测兜底 + 故障值防御）</td><td><a href="a5-thermal.html#tech" target="_parent">A5·读</a></td><td>W7</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-026</td><td>风扇控制（曲线引擎纯函数 + 三模式 + 特权 Helper + 自愈/护栏全量）</td><td><a href="a5-thermal.html#safety" target="_parent">A5·写</a></td><td>W8</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-027</td><td>性能采样器（CPU 逐核/大小核 + 内存压力 + 网速差分 + GPU IOReport 回退链）</td><td><a href="a7-perf.html" target="_parent">A7</a></td><td>W8</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h3>批次 4 · 弹层/设置/个性化（W9~W10）</h3>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
+    <tr><td>T-030</td><td>弹层分区系统（显隐/拖动排序/下钻导航/防抖/可见才加载）</td><td><a href="a2-features.html#s3" target="_parent">A2·S3</a></td><td>W9</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-031</td><td>设置中心框架 + 各分区 + 实时预览 + 迁移</td><td><a href="a2-features.html#s9" target="_parent">A2·S9</a></td><td>W9</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-032</td><td>引导 onboarding + 无障碍标签 + 本地化框架（zh-Hans/en）</td><td><a href="a2-features.html#s10" target="_parent">A2·S10</a></td><td>W9</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-033</td><td>主题系统（.butler-theme/预设/导入导出）+ 昼夜自动切换</td><td><a href="a9-control-personalize.html" target="_parent">A9·TH</a></td><td>W10</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-034</td><td>动作中心（系统开关 + Shortcuts 钉选 + 权限标注）</td><td><a href="a9-control-personalize.html" target="_parent">A9·AC</a></td><td>W10</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-035</td><td>脚本插件槽（沙盒执行/配额/管理页/示例插件）</td><td><a href="a12-productivity-platform.html" target="_parent">A12·E16</a></td><td>W10</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h3>批次 5 · 信息与健康（W11）</h3>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
+    <tr><td>T-040</td><td>天气模块（Provider 协议 + 网络纪律 + 单位）</td><td><a href="a8-slots-info.html" target="_parent">A8·WX</a></td><td>W11</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-041</td><td>日程倒数 + 会议助手（EventKit + 链接检测 + 会议条）</td><td><a href="a8-slots-info.html" target="_parent">A8·CAL</a> <a href="a12-productivity-platform.html" target="_parent">E15</a></td><td>W11</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-042</td><td>网络测速 + 健康体检 + 更新扫描 + 电池养护中心</td><td><a href="a12-productivity-platform.html" target="_parent">A12</a> <a href="a11-power-display-audio.html" target="_parent">A11·E13</a></td><td>W11</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-043</td><td>磁盘监控 + 状态历史统计（SQLite 三表 + 日志页 + CSV 导出）</td><td><a href="a9-control-personalize.html" target="_parent">A9·HS</a></td><td>W11</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h3>批次 6 · 扩展能力与发布（W12~W14）</h3>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
+    <tr><td>T-050</td><td>DDC 亮度/对比度 + 每 App 音量（虚拟声卡驱动 opt-in）</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E14/E20</a></td><td>W12</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-051</td><td>熄屏不睡眠（断言+守护模式）+ 全局热键</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E21</a></td><td>W12</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-052</td><td>自动化（butler:// + CLI + App Shortcuts）+ iCloud 同步</td><td><a href="a9-control-personalize.html" target="_parent">A9·AU/IC</a></td><td>W12~W13</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-053</td><td>菜单栏整理（私有视图树 + 版本白名单）+ iDevice 电量 Helper</td><td><a href="a9-control-personalize.html" target="_parent">A9·MB</a> <a href="a2-features.html#s8" target="_parent">A2·S8</a></td><td>W13</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-054</td><td>桌面小组件（快照共享 + 六族组件 + 交互 + 刷新节流）</td><td><a href="a6-widgets.html" target="_parent">A6</a></td><td>W13</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-055</td><td>遥测（可选默认关）+ Sparkle 更新（EdDSA appcast）</td><td><a href="a2-features.html#s11" target="_parent">A2·S11</a></td><td>W13</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-056</td><td>发布链（DMG + SHA-256 + Release workflow + 契约脚本全量）</td><td><a href="b1-tech.html#release" target="_parent">B1·发布</a></td><td>W14</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-057</td><td>全量回归 + 真机验证矩阵（Ventura/…/当前）+ 文档终稿</td><td>1.4</td><td>W14</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h2>三、测试报告（每任务完成后登记）</h2>
+  <p>登记规则：任务完成的同一提交里更新本表对应行；证据 = 测试运行的命令与摘要 + 提交号；失败项必须附问题编号与修复提交。</p>
+  <table>
+    <tr><th style="width:62px">任务号</th><th style="width:96px">日期</th><th>测试内容（命令 / 用例数 / 结果）</th><th style="width:90px">证据提交</th></tr>
+    <tr><td colspan="4" style="color:var(--sub);text-align:center;padding:18px">尚无测试报告——第一个任务完成后开始逐行登记</td></tr>
+  </table>
+  <h3>行模板</h3>
+  <pre>T-0XX | 2026-MM-DD | swift test（32 用例，32 通过/0 失败）+ 契约脚本 verify-xxx ✓ | <a>commit hash</a>
+       附注：遗留问题 / 截图或录屏（存 docs/evidence/T-0XX/）</pre>
+
+  <h2>四、验收报告（每功能组完成后登记）</h2>
+  <p>验收单位 = 功能类型（对应 <a href="a0-catalog.html" target="_parent">A0 十大类型</a>）；验收方式 = 逐条对照规格编号勾验 + 真机走查 + 验收结论。</p>
+  <table>
+    <tr><th style="width:150px">功能组</th><th style="width:96px">验收日期</th><th>验收结论（对照规格 · 通过项/总数 · 遗留）</th><th style="width:90px">证据提交</th></tr>
+    <tr><td colspan="4" style="color:var(--sub);text-align:center;padding:18px">尚无验收报告——首个功能组（状态图标与展示）完成后登记</td></tr>
+  </table>
+  <h3>验收模板</h3>
+  <pre>功能组① 状态图标与展示 | 2026-MM-DD
+  对照：A2·S1（FR-101~104 ✓）、A2·S2 ✓、A8·SL-01~06 ✓、A6（组件组待批次6）
+  走查：菜单栏/Dock 双开像素一致 · 充电动画遵守减弱动态 · 槽位轮换正常
+  结论：通过（遗留：无 / 遗留项 #issue → 计入 T-0XX 返工）</pre>
+
+  <h2>五、本页维护规则</h2>
+  <ul>
+    <li><strong>谁更新</strong>：每个任务完成提交中同步更新本页（任务状态 + 测试报告行）；每个功能组验收时填验收报告行。</li>
+    <li><strong>仪表盘</strong>：顶部数字由页内脚本按状态徽标自动统计，改徽标即自动刷新。</li>
+    <li><strong>排期变化</strong>：任务延误/阻塞改状态徽标并在测试报告附注原因；不删任务、不降范围（全量原则）。</li>
+    <li><strong>每周快照</strong>：每周末在变更记录追加一行进度摘要。</li>
+  </ul>
+
+  <div class="callout c-info">📌 开工令：从 T-001 开始。每次开发会话结束时，本页 + <a href="a4-register.html" target="_parent">A4 需求登记</a> + 代码一起提交推送，仓库即单一样事实源。</div>
+
+  <script>
+    // 仪表盘自动统计（纯本地 DOM 计数，无网络请求）
+    (function(){
+      var rows = document.querySelectorAll('table.tasks tr td:last-child .badge');
+      var total=0, done=0, doing=0;
+      rows.forEach(function(b){
+        total++;
+        var t = b.textContent.trim();
+        if(t==='已完成') done++;
+        else if(t==='进行中') doing++;
+      });
+      var todo = total - done - doing;
+      function set(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
+      set('d-total',total); set('d-done',done); set('d-doing',doing); set('d-todo',todo);
+      var pct = total? Math.round(done/total*100) : 0;
+      set('d-pct', pct+'%');
+      var bar=document.getElementById('d-bar'); if(bar) bar.style.width=pct+'%';
+    })();
+  </script>
+</div>
+</body>
+</html>
