@@ -19,7 +19,7 @@ public enum StatusIconRenderer {
     }
 
     /// 渲染菜单栏图标（pt 尺寸；显式 2x 位图，headless 环境确定性输出）
-    public static func image(scene: IconSceneState, pointSize: CGFloat, dark: Bool) -> NSImage {
+    public static func image(scene: IconSceneState, pointSize: CGFloat, dark: Bool, chargingGlow: Double? = nil, footerSlot: SlotScene? = nil) -> NSImage {
         let palette = Palette.adaptive(dark: dark)
         let scale = pointSize / canvasSize
         let pixelsPerPoint: CGFloat = 2
@@ -49,10 +49,38 @@ public enum StatusIconRenderer {
             ctx.saveGState()
             ctx.scaleBy(x: scale, y: scale)
             drawSegments(scene: scene, palette: palette, in: ctx)
+            if let glow = chargingGlow {
+                drawChargingRing(glow: glow, palette: palette, in: ctx)
+            }
             ctx.restoreGState()
         }
         NSGraphicsContext.restoreGraphicsState()
+        // 槽位文本在 restore 后由 AppKit 层绘制（避免缩放坐标干扰字号）
+        if let slot = footerSlot, slot.valueText != nil {
+            drawSlotText(slot, pointSize: pointSize, dark: dark, in: image)
+        }
         return image
+    }
+
+    /// 充电呼吸外环：alpha 随相位
+    static func drawChargingRing(glow: Double, palette: Palette, in ctx: CGContext) {
+        let inset: CGFloat = 3
+        let rect = CGRect(x: inset, y: inset, width: canvasSize - inset * 2, height: canvasSize - inset * 2)
+        ctx.setStrokeColor(palette.accent.withAlphaComponent(0.25 + 0.55 * glow).cgColor)
+        ctx.setLineWidth(4)
+        ctx.addPath(CGPath(roundedRect: rect, cornerWidth: 26, cornerHeight: 26, transform: nil))
+        ctx.strokePath()
+    }
+
+    static func drawSlotText(_ slot: SlotScene, pointSize: CGFloat, dark: Bool, in image: NSImage) {
+        guard let text = slot.valueText else { return }
+        let font = NSFont.monospacedDigitSystemFont(ofSize: max(pointSize * 0.38, 7), weight: .semibold)
+        let color: NSColor = slot.isWarning ? Palette.adaptive(dark: dark).lowBattery : Palette.adaptive(dark: dark).ink
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]
+        let str = NSAttributedString(string: text, attributes: attrs)
+        let strSize = str.size()
+        let point = NSPoint(x: (pointSize - strSize.width) / 2, y: 1)
+        str.draw(at: point)
     }
 
     /// 调用方负责坐标系缩放；Dock 渲染器复用同一套分段（B1 两端同源铁律）

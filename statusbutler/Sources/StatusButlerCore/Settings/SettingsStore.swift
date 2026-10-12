@@ -12,6 +12,8 @@ public final class SettingsStore: ObservableObject {
         static let refreshIntervalSeconds = "statusRefreshIntervalSeconds"
         static let showsBatteryPercentage = "showsBatteryPercentage"
         static let placement = "appIconPlacement"
+        static let chargingEffect = "showsChargingEffect"
+        static let footerSlot = "footerSlotID"
     }
 
     private let defaults: UserDefaults
@@ -32,6 +34,14 @@ public final class SettingsStore: ObservableObject {
         didSet { defaults.set(appIconPlacement.rawValue, forKey: Key.placement) }
     }
 
+    @Published public var showsChargingEffect: Bool {
+        didSet { defaults.set(showsChargingEffect, forKey: Key.chargingEffect) }
+    }
+
+    @Published public var footerSlotID: String {
+        didSet { defaults.set(footerSlotID, forKey: Key.footerSlot) }
+    }
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         let storedSize = defaults.double(forKey: Key.iconSize)
@@ -44,5 +54,10 @@ public final class SettingsStore: ObservableObject {
         showsBatteryPercentage = defaults.bool(forKey: Key.showsBatteryPercentage)
         let raw = defaults.string(forKey: Key.placement)
         appIconPlacement = AppIconPlacement(rawValue: raw ?? "") ?? .menuBarOnly
+        if defaults.object(forKey: Key.chargingEffect) == nil {
+            defaults.set(true, forKey: Key.chargingEffect)
+        }
+        showsChargingEffect = defaults.bool(forKey: Key.chargingEffect)
+        footerSlotID = defaults.string(forKey: Key.footerSlot) ?? "volume"
     }
 }

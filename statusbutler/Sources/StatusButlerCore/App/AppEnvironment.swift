@@ -9,6 +9,8 @@ public final class AppEnvironment {
     private let statusBarController: StatusBarController
     private let appIconController: AppIconController
     private var placementCancellable: AnyCancellable?
+    private let chargingEffectClock = ChargingEffectClock()
+    private var chargingCancellables: Set<AnyCancellable> = []
 
     public init(
         store: SystemStatusStore,
@@ -25,6 +27,14 @@ public final class AppEnvironment {
     public func start() {
         statusBarController.startObserving()
         appIconController.start()
+        chargingEffectClock.start(store: store, settings: settings)
+        chargingEffectClock.$glow
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] glow in
+                guard let self else { return }
+                self.statusBarController.renderGlow(glow)
+            }
+            .store(in: &chargingCancellables)
         placementCancellable = settings.$appIconPlacement
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
@@ -37,6 +47,8 @@ public final class AppEnvironment {
     public func stop() {
         store.stop()
         appIconController.stop()
+        chargingEffectClock.stop()
+        chargingCancellables.removeAll()
         placementCancellable = nil
     }
 
