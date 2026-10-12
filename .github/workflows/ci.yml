@@ -25,7 +25,14 @@ jobs:
         run: swift build
 
       - name: 测试（Swift Testing）
-        run: swift test
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! swift test 2>&1 | tee /tmp/test.log; then
+            echo "=== 失败用例（来自 CI 注解诊断）==="
+            grep -E "recorded an issue|failed after .* with" /tmp/test.log | sed 's/^/::error::/' | head -25
+            exit 1
+          fi
 
       - name: Release 构建 + 组包冒烟
         run: bash scripts/build-app.sh release no-open
