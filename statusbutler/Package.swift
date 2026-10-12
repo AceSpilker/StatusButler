@@ -18,6 +18,11 @@ let package = Package(
             dependencies: ["StatusButlerCore"],
             path: "Sources/StatusButler"
         ),
+        .executableTarget(
+            name: "statusbutler",
+            dependencies: ["StatusButlerCore"],
+            path: "Sources/statusbutler-cli"
+        ),
         .testTarget(
             name: "StatusButlerCoreTests",
             dependencies: ["StatusButlerCore"],

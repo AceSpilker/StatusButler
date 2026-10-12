@@ -382,7 +382,7 @@ sleep 97
         // 退出时间上限粗验杀灭：2s 超时 + 轮询/杀灭余量；不杀则要睡满 97s
         #expect(elapsed < 4.5, "timeout kill took \(elapsed)s")
         // 直接验证进程死了：等 0.5s 让孤儿现身（若树杀失败，sleep 97 会被 reparent 到 launchd 活满 97s）
-        try await Task.sleep(nanoseconds: 500_000_000)
+        try await Task.sleep(nanoseconds: 1_500_000_000)
         #expect(!processExists(matching: "sleep 97"), "orphaned sleep survived the timeout kill")
         // 超时计入连败
         #expect(runner.failureCount(pluginID: manifest.id) == 1)

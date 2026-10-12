@@ -13,6 +13,7 @@ public final class AppEnvironment {
     private let popoverController: StatusPopoverController
     private let settingsWindowController: SettingsWindowController
     private let onboardingWindowController: OnboardingWindowController
+    public let automation: AutomationCoordinator
     private var chargingCancellables: Set<AnyCancellable> = []
 
     public init(
@@ -22,7 +23,8 @@ public final class AppEnvironment {
         appIconController: AppIconController,
         popoverController: StatusPopoverController,
         settingsWindowController: SettingsWindowController,
-        onboardingWindowController: OnboardingWindowController
+        onboardingWindowController: OnboardingWindowController,
+        automation: AutomationCoordinator = AutomationCoordinator()
     ) {
         self.store = store
         self.settings = settings
@@ -31,6 +33,7 @@ public final class AppEnvironment {
         self.popoverController = popoverController
         self.settingsWindowController = settingsWindowController
         self.onboardingWindowController = onboardingWindowController
+        self.automation = automation
     }
 
     public func start() {

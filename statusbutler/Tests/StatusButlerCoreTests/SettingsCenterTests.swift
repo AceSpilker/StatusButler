@@ -139,7 +139,7 @@ import Foundation
         #expect(optionIDs == Set(SlotRegistry.builtin.keys), "Picker 选项必须与注册表一屏对齐")
         for option in SettingsSlotOptions.all {
             #expect(!option.title.isEmpty)
-            let knownPending = ["netSpeed", "cpuUsage", "memoryPressure", "temperature", "weather", "calendarCountdown"]
+            let knownPending = ["netSpeed", "cpuUsage", "memoryPressure", "temperature", "weather"]
             #expect(option.isPending == knownPending.contains(option.id))
         }
         // 已实现源排在占位源前面，保证首次打开默认选中的音量在可视区

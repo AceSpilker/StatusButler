@@ -89,9 +89,11 @@ public enum SlotRegistry {
             DiskFreeSlot().id: DiskFreeSlot(),
         ]
         // 待数据源的占位（T-025/T-027/T-040+ 接入后替换实现）
-        for pending in ["netSpeed", "cpuUsage", "memoryPressure", "temperature", "weather", "calendarCountdown"] {
+        // T-041 已接入真实源；其余待数据
+        for pending in ["netSpeed", "cpuUsage", "memoryPressure", "temperature", "weather"] {
             map[pending] = PendingSlot(id: pending)
         }
+        map["calendarCountdown"] = CalendarSlot(provider: LiveEventStore())
         return map
     }()
 

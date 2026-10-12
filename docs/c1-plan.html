@@ -1,4 +1,14 @@
-<!DOCTYPE html>
+<!DO
+    <tr><td>T-023b</td><td>2026-10-12</td><td>蓝牙电量两源合并 26 用例（pmset 解析/AirPods 三仓位/合并规则）；Agent Q</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-041</td><td>2026-10-12</td><td>日程倒数+会议助手 23 用例（七家会议链接/隐私模式/EventKit 双路径）；日租槽位已注册进 SlotRegistry</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-050a</td><td>2026-10-12</td><td>DDC 亮度/对比度 19 用例（dlsym 白名单桥接/昼夜规则/渐变）；T-050 整体进行中（每 App 音量 E20 未做）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-051</td><td>2026-10-12</td><td>熄屏不睡眠+全局热键 19 用例（IOPM 断言幂等/守护决策/Carbon 热键）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-052</td><td>2026-10-12</td><td>自动化引擎 22 用例；集成半场已挂：butler:// scheme 注册+AppDelegate 入口+AutomationCoordinator+statusbutler CLI target</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-053a</td><td>2026-10-12</td><td>菜单栏整理引擎 19 用例（fail-visible/版本门控/内存态恢复）；T-053 整体进行中（iDevice 未做）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-054b</td><td>2026-10-12</td><td>小组件六族视图+TimelineProvider 19 用例；T-054 整体进行中（扩展 target 迁移待做）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-055a</td><td>2026-10-12</td><td>遥测引擎 24 用例（心跳最小集钉死/.invalid 域 fail-safe）；T-055 整体进行中（Sparkle 未接）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-056a</td><td>2026-10-12</td><td>发布链脚本（实跑产出 DMG+SHA-256/appcast 片段/release-draft workflow）；T-056 整体进行中（publish secrets 未配）</td><td>agent 分支→merge</td></tr>
+    <tr><td>终集成</td><td>2026-10-12</td><td>7 分支合并（union 策略）+ butler:// 全链路接线 + 日租槽位注册 + 插件树杀宽限放宽；全量 <strong>54 套件 455 用例全绿</strong></td><td>本提交</td></tr>CTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -134,7 +144,7 @@
   <table class="tasks">
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
     <tr><td>T-040</td><td>天气模块（Provider 协议 + 网络纪律 + 单位）</td><td><a href="a8-slots-info.html" target="_parent">A8·WX</a></td><td>W11</td><td><span class="badge b-gray">已完成</span></td></tr>
-    <tr><td>T-041</td><td>日程倒数 + 会议助手（EventKit + 链接检测 + 会议条）</td><td><a href="a8-slots-info.html" target="_parent">A8·CAL</a> <a href="a12-productivity-platform.html" target="_parent">E15</a></td><td>W11</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-041</td><td>日程倒数 + 会议助手（EventKit + 链接检测 + 会议条）</td><td><a href="a8-slots-info.html" target="_parent">A8·CAL</a> <a href="a12-productivity-platform.html" target="_parent">E15</a></td><td>W11</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-042</td><td>网络测速 + 健康体检 + 更新扫描 + 电池养护中心</td><td><a href="a12-productivity-platform.html" target="_parent">A12</a> <a href="a11-power-display-audio.html" target="_parent">A11·E13</a></td><td>W11</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-043</td><td>磁盘监控 + 状态历史统计（SQLite 三表 + 日志页 + CSV 导出）</td><td><a href="a9-control-personalize.html" target="_parent">A9·HS</a></td><td>W11</td><td><span class="badge b-gray">已完成</span></td></tr>
   </table>
@@ -142,14 +152,14 @@
   <h3>批次 6 · 扩展能力与发布（W12~W14）</h3>
   <table class="tasks">
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
-    <tr><td>T-050</td><td>DDC 亮度/对比度 + 每 App 音量（虚拟声卡驱动 opt-in）</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E14/E20</a></td><td>W12</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-051</td><td>熄屏不睡眠（断言+守护模式）+ 全局热键</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E21</a></td><td>W12</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-050</td><td>DDC 亮度/对比度 + 每 App 音量（虚拟声卡驱动 opt-in）</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E14/E20</a></td><td>W12</td><td><span class="badge b-gray">进行中</span></td></tr>
+    <tr><td>T-051</td><td>熄屏不睡眠（断言+守护模式）+ 全局热键</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E21</a></td><td>W12</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-052</td><td>自动化（butler:// + CLI + App Shortcuts）+ iCloud 同步</td><td><a href="a9-control-personalize.html" target="_parent">A9·AU/IC</a></td><td>W12~W13</td><td><span class="badge b-orange">进行中</span></td></tr>
-    <tr><td>T-053</td><td>菜单栏整理（私有视图树 + 版本白名单）+ iDevice 电量 Helper</td><td><a href="a9-control-personalize.html" target="_parent">A9·MB</a> <a href="a2-features.html#s8" target="_parent">A2·S8</a></td><td>W13</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-053</td><td>菜单栏整理（私有视图树 + 版本白名单）+ iDevice 电量 Helper</td><td><a href="a9-control-personalize.html" target="_parent">A9·MB</a> <a href="a2-features.html#s8" target="_parent">A2·S8</a></td><td>W13</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-054</td><td>桌面小组件（快照共享 + 六族组件 + 交互 + 刷新节流）</td><td><a href="a6-widgets.html" target="_parent">A6</a></td><td>W13</td><td><span class="badge b-gray">进行中</span></td></tr>
-    <tr><td>T-055</td><td>遥测（可选默认关）+ Sparkle 更新（EdDSA appcast）</td><td><a href="a2-features.html#s11" target="_parent">A2·S11</a></td><td>W13</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-056</td><td>发布链（DMG + SHA-256 + Release workflow + 契约脚本全量）</td><td><a href="b1-tech.html#release" target="_parent">B1·发布</a></td><td>W14</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-057</td><td>全量回归 + 真机验证矩阵（Ventura/…/当前）+ 文档终稿</td><td>1.4</td><td>W14</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-055</td><td>遥测（可选默认关）+ Sparkle 更新（EdDSA appcast）</td><td><a href="a2-features.html#s11" target="_parent">A2·S11</a></td><td>W13</td><td><span class="badge b-gray">进行中</span></td></tr>
+    <tr><td>T-056</td><td>发布链（DMG + SHA-256 + Release workflow + 契约脚本全量）</td><td><a href="b1-tech.html#release" target="_parent">B1·发布</a></td><td>W14</td><td><span class="badge b-gray">进行中</span></td></tr>
+    <tr><td>T-057</td><td>全量回归 + 真机验证矩阵（Ventura/…/当前）+ 文档终稿</td><td>1.4</td><td>W14</td><td><span class="badge b-gray">进行中</span></td></tr>
   </table>
 
   <h2>三、测试报告（每任务完成后登记）</h2>
