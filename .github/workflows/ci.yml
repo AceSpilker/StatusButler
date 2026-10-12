@@ -22,7 +22,13 @@ jobs:
           swift --version
 
       - name: 构建
-        run: swift build
+        shell: bash
+        run: |
+          set -o pipefail
+          if ! swift build 2>&1 | tee /tmp/build.log; then
+            grep -E "error:" /tmp/build.log | sed 's/^/::error::/' | head -20
+            exit 1
+          fi
 
       - name: 测试（Swift Testing）
         shell: bash
