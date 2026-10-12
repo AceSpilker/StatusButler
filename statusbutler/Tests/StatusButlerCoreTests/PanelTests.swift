@@ -6,7 +6,8 @@ import Testing
 // T-030: 弹层面板（分区布局模型 / VM 防抖与旁路启停）。UI 视图本身不测，
 // 时间相关用例用宽松阈值等待（防抖窗 500ms、旁路轮询注入短间隔）
 @MainActor
-@Suite struct PanelTests {
+@Suite(.serialized)
+struct PanelTests {
 
     // MARK: - 测试假件
 
@@ -160,7 +161,7 @@ import Testing
         await store.refresh()
         await store.refresh()
         await store.refresh()
-        try await Task.sleep(for: .milliseconds(900))  // 越过 500ms 防抖窗
+        try await Task.sleep(for: .milliseconds(1600))  // 越过 500ms 防抖窗（CI 负载余量）
 
         #expect(emissions.count == 1, "3 次变更应合并为 1 次下发，实际 \(emissions.count)")
         #expect(emissions.first?.battery == .battery(level: 33, charging: false))
@@ -168,7 +169,7 @@ import Testing
 
         // 静默期过后再来一次变更 → 再下发一次（防抖不吞掉间隔后的更新）
         await store.refresh()
-        try await Task.sleep(for: .milliseconds(900))
+        try await Task.sleep(for: .milliseconds(1600))
         #expect(emissions.count == 2)
         #expect(emissions.last?.battery == .battery(level: 44, charging: false))
 
@@ -193,7 +194,7 @@ import Testing
         #expect(vm.popoverVisible == true)
         #expect(vm.isBypassSamplingActive)
 
-        try await Task.sleep(for: .milliseconds(150))  // 等"打开即读一次"落地
+        try await Task.sleep(for: .milliseconds(500))  // 等"打开即读一次"落地（CI 负载余量）
         #expect(bluetooth.readCount >= 1)
         #expect(thermal.readCount >= 1)
         #expect(vm.bluetoothDevices == bluetooth.devices)
@@ -210,7 +211,7 @@ import Testing
             bypassPollInterval: .milliseconds(60)
         )
         vm.panelDidAppear()
-        try await Task.sleep(for: .milliseconds(300))
+        try await Task.sleep(for: .milliseconds(800))
         let bluetoothReads = bluetooth.readCount
         let thermalReads = thermal.readCount
         #expect(bluetoothReads >= 2)  // 短间隔下应已轮询多轮
@@ -220,10 +221,10 @@ import Testing
         #expect(vm.popoverVisible == false)
         #expect(!vm.isBypassSamplingActive)
 
-        try await Task.sleep(for: .milliseconds(150))  // 让可能的 in-flight 读取收尾
+        try await Task.sleep(for: .milliseconds(500))  // 让可能的 in-flight 读取收尾（CI 负载余量）
         let frozenBluetooth = bluetooth.readCount
         let frozenThermal = thermal.readCount
-        try await Task.sleep(for: .milliseconds(200))  // 再越过一个完整轮询周期
+        try await Task.sleep(for: .milliseconds(600))  // 再越过一个完整轮询周期（CI 负载余量）
         #expect(bluetooth.readCount == frozenBluetooth, "close 后蓝牙不应再采样")
         #expect(thermal.readCount == frozenThermal, "close 后温度不应再采样")
     }

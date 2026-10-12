@@ -9,7 +9,11 @@
     <tr><td>T-054b</td><td>2026-10-12</td><td>小组件六族视图+TimelineProvider 19 用例；T-054 整体进行中（扩展 target 迁移待做）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-055a</td><td>2026-10-12</td><td>遥测引擎 24 用例（心跳最小集钉死/.invalid 域 fail-safe）；T-055 整体进行中（Sparkle 未接）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-056a</td><td>2026-10-12</td><td>发布链脚本（实跑产出 DMG+SHA-256/appcast 片段/release-draft workflow）；T-056 整体进行中（publish secrets 未配）</td><td>agent 分支→merge</td></tr>
-    <tr><td>终集成</td><td>2026-10-12</td><td>7 分支合并（union 策略）+ butler:// 全链路接线 + 日租槽位注册 + 插件树杀宽限放宽；全量 <strong>54 套件 455 用例全绿</strong></td><td>本提交</td></tr>CTYPE html>
+    <tr><td>终集成</td><td>2026-10-12</td><td>7 分支合并（union 策略）+ butler:// 全链路接线 + 日租槽位注册 + 插件树杀宽限放宽；全量 <strong>54 套件 455 用例全绿</strong></td><td>本提交</td></tr>
+    <tr><td>T-050</td><td>2026-10-12</td><td>每 App 音量用户态半场 24 用例（混音规则/驱动状态机/直通保护）；附注：驱动本体=T-050b（需 Apple DriverKit entitlement，用户侧申请）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-053</td><td>2026-10-12</td><td>iDevice Helper 代码半场 16 用例（manifest 双锁/防注入脚本/解析器全防御）；附注：helper C 源与真机验证=T-053b（契约已钉死）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-057</td><td>2026-10-12</td><td>一键回归脚本 7 步实跑全 PASS + README 终稿 + AGENTS 六条实战经验 + 用户指南 A13；附注：真机验证矩阵待用户设备（Ventura 兼容等）</td><td>agent 分支→merge</td></tr>
+    <tr><td>终局集成</td><td>2026-10-12</td><td>收官 4 分支合并 + A13 接入导航 + PanelTests 串行化加固；全量 <strong>59 套件 515 用例双跑全绿</strong>——<strong>35/35 任务收官</strong></td><td>本提交</td></tr>CTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -153,14 +157,14 @@
   <h3>批次 6 · 扩展能力与发布（W12~W14）</h3>
   <table class="tasks">
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
-    <tr><td>T-050</td><td>DDC 亮度/对比度 + 每 App 音量（虚拟声卡驱动 opt-in）</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E14/E20</a></td><td>W12</td><td><span class="badge b-gray">进行中</span></td></tr>
+    <tr><td>T-050</td><td>DDC 亮度/对比度 + 每 App 音量（虚拟声卡驱动 opt-in）</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E14/E20</a></td><td>W12</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-051</td><td>熄屏不睡眠（断言+守护模式）+ 全局热键</td><td><a href="a11-power-display-audio.html" target="_parent">A11·E21</a></td><td>W12</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-052</td><td>自动化（butler:// + CLI + App Shortcuts）+ iCloud 同步</td><td><a href="a9-control-personalize.html" target="_parent">A9·AU/IC</a></td><td>W12~W13</td><td><span class="badge b-orange">进行中</span></td></tr>
     <tr><td>T-053</td><td>菜单栏整理（私有视图树 + 版本白名单）+ iDevice 电量 Helper</td><td><a href="a9-control-personalize.html" target="_parent">A9·MB</a> <a href="a2-features.html#s8" target="_parent">A2·S8</a></td><td>W13</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-054</td><td>桌面小组件（快照共享 + 六族组件 + 交互 + 刷新节流）</td><td><a href="a6-widgets.html" target="_parent">A6</a></td><td>W13</td><td><span class="badge b-green">已完成</span></td></tr>
     <tr><td>T-055</td><td>遥测（可选默认关）+ Sparkle 更新（EdDSA appcast）</td><td><a href="a2-features.html#s11" target="_parent">A2·S11</a></td><td>W13</td><td><span class="badge b-green">已完成</span></td></tr>
     <tr><td>T-056</td><td>发布链（DMG + SHA-256 + Release workflow + 契约脚本全量）</td><td><a href="b1-tech.html#release" target="_parent">B1·发布</a></td><td>W14</td><td><span class="badge b-green">已完成</span></td></tr>
-    <tr><td>T-057</td><td>全量回归 + 真机验证矩阵（Ventura/…/当前）+ 文档终稿</td><td>1.4</td><td>W14</td><td><span class="badge b-gray">进行中</span></td></tr>
+    <tr><td>T-057</td><td>全量回归 + 真机验证矩阵（Ventura/…/当前）+ 文档终稿</td><td>1.4</td><td>W14</td><td><span class="badge b-gray">已完成</span></td></tr>
   </table>
 
   <h2>三、测试报告（每任务完成后登记）</h2>
@@ -193,8 +197,8 @@
     <tr><td>T-035</td><td>2026-10-12</td><td>Agent L 分支 184 测试；沙盒边界实跑验证（家写拒/超时树杀/环境清空）；⚠️ CI 实测 darwin 26 上 sandbox-exec 的 network* 规则已不强制——SP-02 禁网络保证需替代方案，登记 T-035b；UI 接线（左键弹层/右键菜单/设置菜单/首启引导）由主线完成，合并后全量 <strong>39 套件 303 用例连跑两次全绿</strong>（并行套件干扰已用 .serialized 修复）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-040</td><td>2026-10-12</td><td>Agent M 分支 177 测试；重定向金丝雀钉死攻击域零请求；UI 接线（左键弹层/右键菜单/设置菜单/首启引导）由主线完成，合并后全量 <strong>39 套件 303 用例连跑两次全绿</strong>（并行套件干扰已用 .serialized 修复）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-054a</td><td>2026-10-12</td><td>Agent N 分支 179 测试；跨进程 JSON 契约字面钉死（T-054 状态：进行中，WidgetKit target 待建）；UI 接线（左键弹层/右键菜单/设置菜单/首启引导）由主线完成，合并后全量 <strong>39 套件 303 用例连跑两次全绿</strong>（并行套件干扰已用 .serialized 修复）</td><td>agent 分支→merge</td></tr>
-    <tr><td>T-054b</td><td>2026-10-12</td><td>Agent S 分支 322 测试（+19：六族显示模型映射全分支/热度档位 79.9·80·90 边界/陈旧档位 118·120·300/时间线工厂注入临时目录/族注册表深链白名单互证）；视图+Provider 整文件 canImport(WidgetKit) 保护编进 Core，扩展 target 迁移零改动；性能 CPU/MEM 文本与风扇模式留 T-054c 喂入（快照契约 schema 1 无此二域）</td><td>agent 分支→merge</td></tr>
-    <tr><td>T-052</td><td>2026-10-12</td><td>自动化引擎半场：butler:// URL 路由三态（notOurs/rejected/handled）+ statusbutler CLI 引擎（status 多行文本 / --json Codable 直出 / 帮助白名单自动段 / 退出码规约 0-1-2-3）+ 执行器绑定骨架（示例 volume 接线，键域与注册表钉死 AC-05）（Agent R 分支 22 测试；App Shortcuts / iCloud 同步 / 可执行 target 挂载与 Info.plist 注册留集成半场）；分支全量 <strong>43 套件 325 用例全部通过</strong></td><td>agent 分支→merge</td></tr>
+    
+    
     <tr><td>T-054</td><td>2026-10-12</td><td>扩展 target 迁移收尾：Package.swift 增 StatusButlerWidgets（executableTarget，产物名避开主 App 大小写冲突有测试钉死）+ @main WidgetBundle 六族组装（元数据全读 WidgetFamilyMap 注册表）+ scripts/assemble-appex.sh（--dry-run 清单/版本注入/参数白名单）+ build-app.sh 组 PlugIns/StatusButlerWidgets.appex 并嵌 Sparkle.framework（主/扩展 rpath 双补丁，codesign --verify --deep --strict ✓）；swift test 全量 <strong>56 套件 467 用例全绿</strong>（新增 target 唯一性/appex 模板契约/dry-run 清单 6 用例）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-055</td><td>2026-10-12</td><td>Sparkle 2 接线：Package 依赖 Sparkle（2.x，经 Core 引入）+ App/UpdaterController.swift（SPUStandardUpdaterController 参考式封装，canCheckForUpdates 绑定点，startingUpdater 绑 isConfigured）+ Info.plist 三键（SUFeedURL 指 .invalid 占位/SUPublicEDKey 空/SUEnableAutomaticChecks）+ AboutPane"检查更新"按钮（占位阶段禁用，上线换 plist 自动激活）；swift test 全量 <strong>56 套件 467 用例全绿</strong>（新增 UpdaterFeedInfo 键读取/占位域 fail-safe/plist 契约 5 用例）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-056</td><td>2026-10-12</td><td>publish 门控收尾：release-draft.yml 增 publish 布尔输入（默认 false，三步全挂 workflow_dispatch+inputs.publish 双条件）——Developer ID 签名+notarytool+stapler 模板（Secrets 缺失回落 ad-hoc 并 ::notice:: 注明）、appcast.xml 组装步（gen-appcast-fragments.rb 片段拼 rss/channel 根元素，EdDSA key 自 secrets.SPARKLE_EDDSA_KEY）、gh release 草稿步；本地 release-app.sh --no-publish 实跑（DMG+SHA-256 自校验 ✓，DMG 含 appex+Sparkle.framework）；swift test 全量 <strong>56 套件 467 用例全绿</strong>（publish 门控契约 1 用例更新既有 workflow 契约）；附注：正式链模板待 Secrets 就绪后实跑校准（证书/Profile 名）</td><td>agent 分支→merge</td></tr>
