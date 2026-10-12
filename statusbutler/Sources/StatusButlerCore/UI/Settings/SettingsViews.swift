@@ -219,6 +219,12 @@ public struct AboutPane: View {
     /// 发布仓库地址由集成/发布任务替换为真实 URL；先占位保证链接控件版式完整
     private static let repositoryURL = URL(string: "https://github.com/linzhongyang/mactool")!
 
+    // T-055：更新接线状态走 @State + .task 而非属性初始化器持单例——
+    // View 属性初始化在非隔离上下文执行，取 @MainActor 的 UpdaterController.shared 会破隔离；
+    // body/.task 天然主隔离，合法访问点
+    @State private var updateConfigured = false
+    @State private var canCheckForUpdates = false
+
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
     }
@@ -235,11 +241,29 @@ public struct AboutPane: View {
                 PreferenceRow("源代码仓库", subtitle: "问题反馈与版本发布") {
                     Link("GitHub ↗", destination: Self.repositoryURL)
                 }
+                PreferenceRow("软件更新", subtitle: updateConfigured ? "Sparkle 自动更新（EdDSA 签名）" : "更新通道未开通（上线后启用）") {
+                    Button("检查更新…") {
+                        UpdaterController.shared.checkNow()
+                    }
+                    // 占位阶段（SUFeedURL 指 .invalid）canCheckForUpdates 恒 false：按钮可见但不可点，
+                    // 上线换真 plist 后自动激活——UI 不用随上线再改
+                    .disabled(!canCheckForUpdates)
+                }
+                // TODO(T-055 上线): SUFeedURL/SUPublicEDKey 换真值 + appcast 发布后，
+                // 更新说明按语言分发与失败降级驱动（OG-FR-200）在此扩展
                 // 占位：第三方依赖与开源致谢清单随首个对外发布版本整理
                 PreferenceRow("开源致谢", subtitle: "致谢清单整理中") {
                     Text("—")
                         .foregroundStyle(.secondary)
                 }
+            }
+        }
+        .task {
+            let updater = UpdaterController.shared
+            updateConfigured = updater.feedInfo.isConfigured
+            canCheckForUpdates = updater.canCheckForUpdates
+            for await flag in updater.$canCheckForUpdates.values {
+                canCheckForUpdates = flag
             }
         }
     }

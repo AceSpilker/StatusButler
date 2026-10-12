@@ -37,5 +37,14 @@
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<!-- T-055（A2·S11·OG-FR-200）Sparkle 2 最小必需键：占位值，上线换真值（只改 plist 不动二进制）。
+	     SUFeedURL 用 .invalid 保留域占位 → UpdaterFeedInfo.isConfigured=false，占位阶段一切更新检查被拦；
+	     SUPublicEDKey 留空同理（EdDSA 公钥随首个正式签名 DMG 产出时填入） -->
+	<key>SUFeedURL</key>
+	<string>https://statusbutler.invalid/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string></string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 </dict>
 </plist>
