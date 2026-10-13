@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  StatusButler 风扇特权 Helper · LaunchDaemon 模板（T-222 安装协议半场）
+
+  安装路线（SMAppService，A5·TF-20"权限模型与 Helper 设计"）：
+  1. 组包时本模板随 helper 二进制进 StatusButler.app/Contents/Resources/FanHelper/；
+  2. 用户在设置页/弹层首次启用风扇控制 → App 解释提权原因后，把本模板拷贝到
+     /Library/LaunchDaemons/com.statusbutler.fanhelper.plist（ProgramArguments 的
+     __HELPER_PATH__ 占位符替换为 .app 内 helper 的绝对路径——InstallAssistant
+     类系统弹窗由 SMAppService.daemon(plistName).register() 触发，用户输管理员
+     密码完成授权；安装动作永远由用户确认发起，App 不得静默落盘）；
+  3. register 成功后 launchd 以 root 拉起 helper，stdout/stdin 由 SMAppService
+     桥接层接管（XPC/Unix 域套接字升级不动白名单语义）；
+  4. 卸载：设置页"恢复系统控制并卸载 Helper"→ 先写回系统自动模式，再
+     SMAppService unregister + 删除 plist（A5 安全护栏"透明可卸"）。
+
+  本文件是模板不是活配置：绝不直接改动后手工塞进系统目录——绕过
+  SMAppService 的安装没有系统授权弹窗，也没有卸载登记。
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.statusbutler.fanhelper</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__HELPER_PATH__</string>
+    </array>
+
+    <!-- 常驻服务：App 随时可能请求接管/交还，按需拉起会引入首写延迟 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- 特权面最小化：helper 只需要 IOKit 访问 AppleSMC，不给网络/文件写面 -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <!-- 崩溃日志归位（诊断走系统统一目录，helper 自身零文件写路径） -->
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.statusbutler.fanhelper.stderr</string>
+</dict>
+</plist>
