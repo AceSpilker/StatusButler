@@ -82,8 +82,26 @@
     <tr><td>Sparkle 上线值</td><td>生成 EdDSA 密钥对，Info.plist 换真域名+公钥</td></tr>
   </table>
 
-  <h2>五、2026-10-13 攻坚结果（复核）</h2>
-  <p>除熄屏（按要求排除）外，第二节 12 座孤岛中 11 座已全部挂线（LiveServices 统一装配），第三节缺失项已完成：App 壳三件套/弹层下钻三页+音量可调+滚动/蓝牙操作+电量/DDC 音量路由/音频输入/聆听模式（编译开关默认关待白名单决策）/E8 CloudKit（默认关）/E9 App Shortcuts/E3 AX 通道（macOS 26.5 SystemUIServer 限制如实降级）。测试 515→680。<strong>仍开放：聆听模式白名单决策、iDevice helper 真机、DriverKit entitlement、Developer ID、真机手感验收（滚动/深链/ Ventura 矩阵）。</strong></p>
+  <h2>五、2026-10-13 深夜复查（攻坚后全库重审）</h2>
+  <p><strong>巨大进展：12 座孤岛已消 6 座以上（WeatherFeed/HistoryFeed/WidgetFeed/PerfEngine/SyncCoordinator/SharedIntentExecutor/Updater/Telemetry/蓝牙操作与电量/音量写 均有真实消费方），App 壳与弹层全量落地。整体用户可用完成度约 85%（不含外部依赖项）。</strong></p>
+  <table>
+    <tr><th>仍开放（引擎就绪无消费方，检索=0）</th><th>缺什么</th><th>量级</th></tr>
+    <tr><td>AudioInputMonitor</td><td>弹层音频输入行 + 设置开关（默认关）</td><td>小</td></tr>
+    <tr><td>MenubarTidyAssembly</td><td>AppEnvironment 启动装配 + 设置页（规则编辑/状态显示）</td><td>小-中</td></tr>
+    <tr><td>HotKeyCenter</td><td>设置页热键录制/注册接线（E22）</td><td>小</td></tr>
+    <tr><td>DDCRouting</td><td>音量写入口接路由决策（外接显示器→DDC 0x62，否则 AppleScript）</td><td>小</td></tr>
+    <tr><td>MobileBatteryHelperReader</td><td>弹层 Apple 设备行（unavailable 态占位）</td><td>小</td></tr>
+    <tr><td>FanControlEngine（引用≠接线：写路径无 Helper）</td><td>特权 Helper + 温控面板控制 UI（T-026b）</td><td>大</td></tr>
+  </table>
+  <table>
+    <tr><th>规格 UI 缺口（关键词检索=0）</th><th>量级</th></tr>
+    <tr><td>主题导入/导出文件 UI（NSOpenPanel/NSSavePanel + ThemeCodec）</td><td>小</td></tr>
+    <tr><td>弹层分区排序设置编辑器（PanelLayout 已有模型，无 UI）</td><td>小</td></tr>
+    <tr><td>天气城市设置（无城市=天气静默，WX-01 的手动城市表）</td><td>小</td></tr>
+    <tr><td>Dock 点击弹层真 Dock 点位锚定（现为菜单栏锚定）</td><td>小</td></tr>
+    <tr><td>音量 up/down 步进（glue TODO）</td><td>极小</td></tr>
+  </table>
+  <p><strong>决策/外部项不变</strong>：聆听模式白名单决策（代码备好默认关）、熄屏（用户排除）、DriverKit entitlement、iDevice 真机、Developer ID、Sparkle 真值、真机手感验收。</p>
 
   <h2>六、审计结论与建议下一步</h2>
   <div class="callout c-info">
