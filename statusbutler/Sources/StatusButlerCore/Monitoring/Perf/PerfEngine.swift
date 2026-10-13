@@ -27,17 +27,26 @@ extension NetRateMonitor: NetRateMonitoring {}
 
 // MARK: - 采样帧
 
-/// 一帧性能采样：三域并读的并集，任一域失败该域为 nil（其余照常发布）。
+/// 一帧性能采样：各域并读的并集，任一域失败该域为 nil（其余照常发布）。
+/// gpu 为 T-203 增补域：默认 nil 保持既有构造兼容（GPU 引擎缺席时帧不带 GPU）。
 public struct PerfSample: Sendable {
     public let cpu: CpuUsage?
     public let memory: MemoryUsage?
     public let net: NetRates?
+    public let gpu: GpuUsage?
     public let at: Date
 
-    public init(cpu: CpuUsage?, memory: MemoryUsage?, net: NetRates?, at: Date = Date()) {
+    public init(
+        cpu: CpuUsage?,
+        memory: MemoryUsage?,
+        net: NetRates?,
+        gpu: GpuUsage? = nil,
+        at: Date = Date()
+    ) {
         self.cpu = cpu
         self.memory = memory
         self.net = net
+        self.gpu = gpu
         self.at = at
     }
 }
@@ -46,7 +55,7 @@ extension PerfSample: Equatable {
     /// 相等性刻意不含 `at`：去重语义是"数据变了没有"而非"时钟走了没有"——
     /// 下游 removeDuplicates 据此在系统静默期不产生第二帧（能效铁律：订阅去重）。
     public static func == (lhs: PerfSample, rhs: PerfSample) -> Bool {
-        lhs.cpu == rhs.cpu && lhs.memory == rhs.memory && lhs.net == rhs.net
+        lhs.cpu == rhs.cpu && lhs.memory == rhs.memory && lhs.net == rhs.net && lhs.gpu == rhs.gpu
     }
 }
 
@@ -111,6 +120,7 @@ public actor PerfEngine {
     private let cpu: any CpuMonitoring
     private let memory: any MemoryMonitoring
     private let net: any NetRateMonitoring
+    private let gpu: any GpuMonitoring
     private let interval: Duration
 
     /// 发布总线：非隔离 let（Sendable），槽位注册表可从渲染上下文直接读
@@ -123,12 +133,14 @@ public actor PerfEngine {
         cpu: any CpuMonitoring = CpuMonitor(),
         memory: any MemoryMonitoring = MemoryMonitor(),
         net: any NetRateMonitoring = NetRateMonitor(),
+        gpu: any GpuMonitoring = GpuMonitor(),
         bus: PerfBus = PerfBus(),
         interval: Duration = PerfEngine.defaultInterval
     ) {
         self.cpu = cpu
         self.memory = memory
         self.net = net
+        self.gpu = gpu
         self.bus = bus
         self.interval = interval
     }
@@ -168,12 +180,16 @@ public actor PerfEngine {
         }
     }
 
-    /// 单帧采样：三域并读，任一失败不影响其余域（部分降级好过整帧丢弃）
+    /// 单帧采样：各域并读，任一失败不影响其余域（部分降级好过整帧丢弃）。
+    /// GPU 域失败（含 headless 双 nil）静默随帧——150ms 差分窗口与 CPU 的 100ms 并行，不拖节拍。
     public func sampleOnce() async {
         async let cpuSample = cpu.read()
         async let memorySample = memory.read()
         async let netSample = net.read()
-        let sample = await PerfSample(cpu: cpuSample, memory: memorySample, net: netSample)
+        async let gpuSample = gpu.read()
+        let sample = await PerfSample(
+            cpu: cpuSample, memory: memorySample, net: netSample, gpu: gpuSample
+        )
         bus.send(sample)
     }
 }
