@@ -10,6 +10,7 @@ public enum SettingsPane: String, CaseIterable, Identifiable, Sendable {
     case general
     case appearance
     case panel
+    case hotkey
     case about
 
     public var id: String { rawValue }
@@ -19,6 +20,7 @@ public enum SettingsPane: String, CaseIterable, Identifiable, Sendable {
         case .general: "通用"
         case .appearance: "状态图标外观"
         case .panel: "状态面板"
+        case .hotkey: "热键"
         case .about: "关于"
         }
     }
@@ -28,6 +30,7 @@ public enum SettingsPane: String, CaseIterable, Identifiable, Sendable {
         case .general: "gearshape"
         case .appearance: "paintpalette"
         case .panel: "rectangle.stack"
+        case .hotkey: "keyboard"
         case .about: "info.circle"
         }
     }

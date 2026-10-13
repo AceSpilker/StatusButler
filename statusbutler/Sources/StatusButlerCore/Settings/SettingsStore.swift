@@ -22,8 +22,27 @@ public final class SettingsStore: ObservableObject {
         static let appLanguage = "appLanguage"
         static let naturalScrolling = "naturalVolumeScrolling"
         static let iCloudSync = "iCloudSyncEnabled"
+        static let weatherCityName = "weatherCityName"
+        static let hotKeyAssignments = "hotKeyAssignments"
+        static let panelLayout = "panelLayout"
         // telemetryConsent 走 TelemetryPolicy.consentKey（与调度器持久层同键互读，
         // 单点登记在 TelemetryPolicy，此处不另设键防两处漂移）
+    }
+
+    /// HotKeyCombo（Display 层）保持非 Codable 的既有事实不动：持久化在此私有 DTO 上做桥。
+    /// 字段语义与 HotKeyCombo.keyCode/.modifiers 一一对应（UInt32 位掩码原样落盘）
+    private struct StoredHotKeyCombo: Codable {
+        let keyCode: UInt32
+        let modifiers: UInt32
+
+        init(combo: HotKeyCombo) {
+            keyCode = combo.keyCode
+            modifiers = combo.modifiers
+        }
+
+        var combo: HotKeyCombo {
+            HotKeyCombo(keyCode: keyCode, modifiers: modifiers)
+        }
     }
 
     private let defaults: UserDefaults
@@ -81,6 +100,42 @@ public final class SettingsStore: ObservableObject {
     /// iCloud 设置同步总开关（E8，默认关）
     @Published public var iCloudSyncEnabled: Bool {
         didSet { defaults.set(iCloudSyncEnabled, forKey: Key.iCloudSync) }
+    }
+
+    /// 天气城市（T-201 / A8·WX-01 默认手动城市）：存城市中文名（WeatherCityCatalog.name 即键）。
+    /// nil = 未配置 → WeatherFeed location 闭包返回 nil → 采样短路、天气静默（不报错不取数）。
+    /// 城市表后续版本删名后查不到坐标同样静默，无需在此预校验
+    @Published public var weatherCity: String? {
+        didSet {
+            if let weatherCity {
+                defaults.set(weatherCity, forKey: Key.weatherCityName)
+            } else {
+                defaults.removeObject(forKey: Key.weatherCityName)
+            }
+        }
+    }
+
+    /// 全局热键键位表（T-206 / E22）：actionID（对齐 ActionRegistry 的 id）→ 组合键。
+    /// 空 = 全部未设置（热键功能整体静默）。持久化经 StoredHotKeyCombo DTO 编码为 JSON
+    @Published public var hotKeyAssignments: [String: HotKeyCombo] {
+        didSet {
+            let stored = Dictionary(
+                uniqueKeysWithValues: hotKeyAssignments.map { ($0.key, StoredHotKeyCombo(combo: $0.value)) })
+            if let data = try? JSONEncoder().encode(stored) {
+                defaults.set(data, forKey: Key.hotKeyAssignments)
+            }
+        }
+    }
+
+    /// 弹层分区布局（T-209 / A2·S3）：显隐 + 排序，唯一状态源在设置层（架构铁律）。
+    /// 读回时 sanitized 兜底（旧数据缺新分区 id / 重复项收敛回合法排列），
+    /// UI 写入路径经 PanelLayoutEditor 纯函数，天然合法
+    @Published public var panelLayout: PanelLayout {
+        didSet {
+            if let data = try? JSONEncoder().encode(panelLayout) {
+                defaults.set(data, forKey: Key.panelLayout)
+            }
+        }
     }
 
     /// 语言代数：Localization 是值类型、视图无法观察其"重建"——每次切换 +1 作为刷新信号，
@@ -143,6 +198,20 @@ public final class SettingsStore: ObservableObject {
         }
         iCloudSyncEnabled = defaults.bool(forKey: Key.iCloudSync)
         telemetryConsent = TelemetryConsent(rawValue: defaults.string(forKey: TelemetryPolicy.consentKey) ?? "") ?? .notAsked
+        weatherCity = defaults.string(forKey: Key.weatherCityName)
+        if let data = defaults.data(forKey: Key.hotKeyAssignments),
+           let stored = try? JSONDecoder().decode([String: StoredHotKeyCombo].self, from: data) {
+            hotKeyAssignments = stored.mapValues(\.combo)
+        } else {
+            hotKeyAssignments = [:]
+        }
+        if let data = defaults.data(forKey: Key.panelLayout),
+           let layout = try? JSONDecoder().decode(PanelLayout.self, from: data) {
+            // 损坏输入（重复/缺新分区 id）收敛回合法布局，不整体丢弃用户排序
+            panelLayout = layout.sanitized()
+        } else {
+            panelLayout = .default
+        }
     }
 
     // MARK: - 登录项透传（GeneralPane 开关与"待批准"提示行消费；无服务时恒未注册）

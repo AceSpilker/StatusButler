@@ -72,6 +72,7 @@ public struct SettingsRootView: View {
         case .general: GeneralPane(settings: settings)
         case .appearance: AppearancePane(settings: settings)
         case .panel: PanelPane(settings: settings)
+        case .hotkey: HotKeyPane(settings: settings)
         case .about: AboutPane(settings: settings)
         case nil: GeneralPane(settings: settings)
         }
@@ -82,6 +83,8 @@ public struct SettingsRootView: View {
 
 public struct GeneralPane: View {
     @ObservedObject private var settings: SettingsStore
+    /// 城市搜索框草稿：过滤是纯函数现算（WeatherCityCatalog.search），不落盘
+    @State private var cityQuery = ""
 
     public init(settings: SettingsStore) {
         self.settings = settings
@@ -150,6 +153,53 @@ public struct GeneralPane: View {
                     .fixedSize()
                 }
             }
+            Section("天气") {
+                // T-201 / A8·WX-01：默认手动城市。未配置 = 天气静默（不取数不报错），
+                // 槽位里只显示降级文案；配置后 WeatherFeed 按 30 分钟节拍取数（集成注记见 WeatherCityCatalog.swift 头）
+                PreferenceRow(
+                    "天气城市",
+                    subtitle: settings.weatherCity.map { "当前：\($0)" } ?? "未配置（天气保持静默）"
+                ) {
+                    if let city = settings.weatherCity,
+                       let entry = WeatherCityCatalog.city(named: city) {
+                        Text(String(format: "%.2f°N, %.2f°E", abs(entry.latitude), abs(entry.longitude)))
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                    Button("不使用天气") {
+                        settings.weatherCity = nil
+                        cityQuery = ""
+                    }
+                    .disabled(settings.weatherCity == nil)
+                }
+                PreferenceRow("搜索城市", subtitle: "中文名或拼音，前缀/包含匹配；选择后立即生效") {
+                    TextField("如：杭州 或 hang", text: $cityQuery)
+                        .frame(maxWidth: 240)
+                }
+                // 命中列表：上限 8 条防长表把分区撑爆；点击即选中并清空搜索（选完即走的操作路径）
+                let matches = WeatherCityCatalog.search(cityQuery).prefix(8)
+                ForEach(Array(matches)) { city in
+                    Button {
+                        settings.weatherCity = city.name
+                        cityQuery = ""
+                    } label: {
+                        HStack {
+                            Text(city.name)
+                            if settings.weatherCity == city.name {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(Color.accentColor)
+                            }
+                            Spacer()
+                            Text(city.pinyin)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
     }
 
@@ -173,6 +223,9 @@ private extension TelemetryConsent {
 
 public struct AppearancePane: View {
     @ObservedObject private var settings: SettingsStore
+    /// 导入导出编排器：面板/文件 IO 全注入，@StateObject 与本视图同生命周期
+    /// （默认闭包只在按钮动作里触达 NSOpenPanel/NSSavePanel，构造零窗口依赖，CI 安全）
+    @StateObject private var port = ThemePortController()
 
     public init(settings: SettingsStore) {
         self.settings = settings
@@ -218,11 +271,146 @@ public struct AppearancePane: View {
                     .frame(maxWidth: 240)
                 }
             }
+            Section("主题") {
+                // T-208：导入前差异预览、应用后跳过项可见（E7·TH-03/05），导出是当前配置的快照
+                PreferenceRow("导入 / 导出", subtitle: ".butler-theme 主题文件（JSON）") {
+                    HStack {
+                        Button("导入…") { port.beginImport(from: settings) }
+                        Button("导出…") { port.export(from: settings) }
+                    }
+                }
+                importFeedback
+                exportFeedback
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var importFeedback: some View {
+        switch port.importPhase {
+        case .idle:
+            EmptyView()
+        case .previewing(let rows):
+            // 差异预览表：字段/现值/新值——用户确认的是"将发生什么"，不是盲应用
+            VStack(alignment: .leading, spacing: 6) {
+                Text("导入预览（\(rows.count) 项变更）")
+                    .font(.callout.weight(.medium))
+                Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 2) {
+                    GridRow {
+                        Text("字段")
+                        Text("现值")
+                        Text("新值")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    ForEach(rows) { row in
+                        GridRow {
+                            Text(row.field)
+                            Text(row.currentValue)
+                                .foregroundStyle(.secondary)
+                            Text(row.newValue)
+                        }
+                        .font(.caption)
+                    }
+                }
+                HStack {
+                    Button("确认应用") { port.confirmImport(to: settings) }
+                        .buttonStyle(.borderedProminent)
+                    Button("取消") { port.reset() }
+                }
+            }
+            .padding(8)
+            .background(RoundedRectangle(cornerRadius: 6).fill(.quaternary.opacity(0.4)))
+        case .applied(let skipped):
+            VStack(alignment: .leading, spacing: 6) {
+                Label("主题已应用", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                if skipped.isEmpty {
+                    Text("全部字段生效，无跳过项")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    // TH-05：跳过项必须可读，不静默吞
+                    Text("以下 \(skipped.count) 项未生效：")
+                        .font(.caption)
+                    ForEach(skipped, id: \.self) { note in
+                        Text("· \(note)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Button("好") { port.reset() }
+            }
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 6) {
+                Label("导入失败", systemImage: "xmark.octagon.fill")
+                    .foregroundStyle(.red)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                Button("好") { port.reset() }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var exportFeedback: some View {
+        switch port.exportOutcome {
+        case .idle:
+            EmptyView()
+        case .saved(let path):
+            VStack(alignment: .leading, spacing: 4) {
+                Label("已导出", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text(path)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                Button("好") { port.dismissExportNotice() }
+            }
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 4) {
+                Label("导出失败", systemImage: "xmark.octagon.fill")
+                    .foregroundStyle(.red)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button("好") { port.dismissExportNotice() }
+            }
         }
     }
 }
 
 // MARK: - 状态面板分区
+
+/// 布局编辑纯函数（T-209）：显隐与排序都产出新 PanelLayout 值，Store 写入即持久化。
+/// 排序只动 order（全量排列），显隐只动 visibleSections（order 的子集）——两条不变量
+/// 由 PanelLayout.isValid/sanitized 兜底，本层不另设校验
+public enum PanelLayoutEditor {
+    /// 上移/下移：offset 取 ±1（按钮语义），目标越界原样返回（首行上移=无操作）。
+    /// 泛化成任意 offset 是为了测试可直跳多步，UI 只用 ±1
+    public static func move(_ layout: PanelLayout, id: PanelSectionID, offset: Int) -> PanelLayout {
+        guard let index = layout.order.firstIndex(of: id) else { return layout }
+        let target = index + offset
+        guard layout.order.indices.contains(target), target != index else { return layout }
+        var order = layout.order
+        order.swapAt(index, target)
+        return PanelLayout(visibleSections: layout.visibleSections, order: order)
+    }
+
+    /// 显隐切换：隐藏=从 visibleSections 移除；显示=追加（visible 是集合语义，
+    /// 追加位置不影响面板渲染——渲染按 order 过滤 visible）
+    public static func setVisible(_ layout: PanelLayout, id: PanelSectionID, visible: Bool) -> PanelLayout {
+        var visibleSections = layout.visibleSections
+        if visible {
+            if !visibleSections.contains(id) { visibleSections.append(id) }
+        } else {
+            visibleSections.removeAll { $0 == id }
+        }
+        return PanelLayout(visibleSections: visibleSections, order: layout.order)
+    }
+}
 
 public struct PanelPane: View {
     @ObservedObject private var settings: SettingsStore
@@ -240,15 +428,57 @@ public struct PanelPane: View {
                     isOn: $settings.showsChargingEffect
                 )
             }
+            // T-209：分区排序编辑器。状态源唯一（SettingsStore.panelLayout），
+            // 本视图经 PanelLayoutEditor 纯函数产新值写回；LiveServices 构造 PanelViewModel
+            // 时传 settings.panelLayout 即点亮（集成注记见 section 尾注释）
+            Section {
+                ForEach(Array(settings.panelLayout.order.enumerated()), id: \.element) { index, section in
+                    HStack {
+                        Label(section.displayName, systemImage: section.symbolName)
+                        Spacer(minLength: 16)
+                        Toggle("显示", isOn: Binding(
+                            get: { settings.panelLayout.visibleSections.contains(section) },
+                            set: { settings.panelLayout = PanelLayoutEditor.setVisible(settings.panelLayout, id: section, visible: $0) }
+                        ))
+                        .toggleStyle(.checkbox)
+                        .fixedSize()
+                        .help("取消勾选后该分区从状态面板隐藏（数据采样随弹层显隐启停，不受此项影响）")
+                        Button {
+                            settings.panelLayout = PanelLayoutEditor.move(settings.panelLayout, id: section, offset: -1)
+                        } label: {
+                            Image(systemName: "chevron.up")
+                        }
+                        .disabled(index == 0)
+                        .help("上移")
+                        Button {
+                            settings.panelLayout = PanelLayoutEditor.move(settings.panelLayout, id: section, offset: 1)
+                        } label: {
+                            Image(systemName: "chevron.down")
+                        }
+                        .disabled(index == settings.panelLayout.order.count - 1)
+                        .help("下移")
+                    }
+                }
+                if settings.panelLayout.visibleSections.isEmpty {
+                    Text("所有分区已隐藏：弹层将只剩标题与底槽。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("分区排序与显隐")
+            } footer: {
+                Text("列表顺序即弹层分区顺序。")
+            }
             Section("槽位轮换") {
                 // 占位：多槽位轮换展示随 A8·SL-05 接入（依赖槽位调度器）
                 PreferenceCheckboxRow("底部槽位自动轮换", subtitle: "待槽位调度器（A8·SL-05）接入", isOn: .constant(false))
                     .disabled(true)
             }
-            // TODO(T-031 后续)：分区显隐 + 上移/下移排序。
-            // 依赖 PanelLayout 类型（agent/popover 分支，未合并）——合入前不在此另建
-            // 第二份分区顺序状态源（架构铁律：设置单一状态源 SettingsStore），届时
-            // 新增 @Published panelLayout 字段并在此补 List + onMove 排序 UI。
+            // 集成注记（T-209 主线接线）：LiveServices.swift 构造 PanelViewModel 处
+            // （panelViewModel = PanelViewModel(…)）补 layout 入参：
+            //     panelViewModel = PanelViewModel(store: store, layout: settings.panelLayout, …)
+            // 并订阅 settings.$panelLayout.removeDuplicates().sink { vm.apply(layout: $0) }
+            // （apply 已是 PanelViewModel 公开方法），设置页改序即时生效。
         }
     }
 }

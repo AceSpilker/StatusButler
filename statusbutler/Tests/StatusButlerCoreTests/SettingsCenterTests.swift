@@ -125,7 +125,8 @@ import Foundation
     // MARK: 分区枚举与槽位选项（侧栏/Picker 数据源）
 
     @Test func panesCoverAllSectionsWithNonEmptyTitles() {
-        #expect(SettingsPane.allCases.count == 4)
+        // T-206 起新增热键分区：5 = 通用/外观/面板/热键/关于
+        #expect(SettingsPane.allCases.count == 5)
         let titles = SettingsPane.allCases.map(\.title)
         for pane in SettingsPane.allCases {
             #expect(!pane.title.isEmpty)
