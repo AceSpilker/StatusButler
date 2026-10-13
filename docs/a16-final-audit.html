@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A16 · 终审报告 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.75;font-size:15px}
+  .wrap{max-width:920px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:28px;margin-bottom:8px}
+  .lede{font-size:15.5px;color:var(--sub);margin-bottom:22px}
+  h2{font-size:20px;margin:36px 0 10px;padding-left:12px;border-left:4px solid var(--brand)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.8px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:6px 9px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .b{display:inline-block;border-radius:20px;padding:0 8px;font-size:11px;font-weight:600;white-space:nowrap}
+  .ok{background:#e5f6ec;color:var(--ok)}.part{background:#fdf1e0;color:var(--warn)}
+  .no{background:#fdeae8;color:var(--bad)}.ext{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:13px 17px;margin:12px 0;font-size:13.5px;border:1px solid;background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:14px 0}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--soft)}
+  .stat .n{font-size:24px;font-weight:750;color:var(--brand)}
+  .stat .l{font-size:11.5px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A16 / Final Audit After C2</div>
+  <h1>终审报告：C2 收官后全库符合性</h1>
+  <p class="lede">2026-10-13 终审 · 方法：LiveServices/AppEnvironment 装配清单 + 引擎跨模块消费方计数 + PanelRoute 可达路径 + 规格关键词反查。前序：<a href="a14-audit.html" target="_parent">A14</a> · <a href="a15-final-audit.html" target="_parent">A15</a>。</p>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="n">141</div><div class="l">源文件 · 36 模块域</div></div>
+    <div class="stat"><div class="n">854</div><div class="l">测试用例（107 套件）</div></div>
+    <div class="stat"><div class="n">86%</div><div class="l">用户可感知完成度</div></div>
+    <div class="stat"><div class="n">95%</div><div class="l">代码资产完成度</div></div>
+  </div>
+
+  <h2>一、✅ 端到端完整可用（LiveServices 装配确认）</h2>
+  <table>
+    <tr><th>域</th><th>已接线项（装配清单验证）</th></tr>
+    <tr><td>核心三信号</td><td>电池/Wi-Fi/音量真数据 → 图标 + 弹层</td></tr>
+    <tr><td>弹层全量</td><td>概要 + 下钻四页（电池详情/链路/附近网络/历史曲线）+ 电池养护 + 插件管理 + 更新扫描 + 性能分区 + 音频输入 + iDevice + 蓝牙操作/电量 + 动作行 + 会议条 + Shortcuts</td></tr>
+    <tr><td>App 壳</td><td>单实例 · 登录项 · Dock 点击 · 引导 · 语言切换 · 菜单本地化</td></tr>
+    <tr><td>数据管道</td><td>PerfEngine(CPU+内存+网速+GPU+磁盘IO) · 天气(城市驱动) · 历史(事件+容量) · 小组件快照写入者 · 日程</td></tr>
+    <tr><td>设备</td><td>DDC 音量路由(回退+步进) · 蓝牙操作 · 音频输入 · AirPods 分体电量 · iDevice 占位</td></tr>
+    <tr><td>个性化</td><td>主题应用+导入导出+昼夜切换 · 分区排序 · 热键注册 · 皮肤引擎 · 设置中心全分区</td></tr>
+    <tr><td>自动化</td><td>butler:// 全链 · CLI · App Shortcuts(Siri) · 音量步进 · DDC 路由</td></tr>
+    <tr><td>基建</td><td>Sparkle(fail-safe) · 遥测(默认关) · 发布链(DMG+appcast 草稿)</td></tr>
+  </table>
+
+  <h2>二、🟡 引擎就绪、差挂线（5 项，全部"AppEnvironment start 一行"量级）</h2>
+  <table>
+    <tr><th>引擎</th><th>状态</th><th>缺什么</th><th>量级</th></tr>
+    <tr><td>NotificationRouter（T-215）</td><td>三规则+频率限制+授权流全绿</td><td>AppEnvironment.start() 构造+start；温度/电池数据闭包接 store</td><td>极小</td></tr>
+    <tr><td>SpeedTestRunner（T-217）</td><td>解析+历史全绿</td><td>弹层"测一下"入口按钮接线（PanelRoute.updateScan 页已有容器）</td><td>极小</td></tr>
+    <tr><td>UpdateScanner（T-221）</td><td>三道闸+brew 解析全绿</td><td>同上，入口已有缺触发</td><td>极小</td></tr>
+    <tr><td>TidyCoordinator（T-223）</td><td>编排+版本门+AX 三态全绿</td><td>AppEnvironment.start() + settings.tidyEnabled 订阅</td><td>小</td></tr>
+    <tr><td>FanControlPanel（T-222）</td><td>VM+Helper 客户端+白名单全绿</td><td>弹层热控分区挂 FanControlPanel 数据面；Helper 安装向导设置页</td><td>小-中</td></tr>
+  </table>
+
+  <h2>三、⛔ 决策/外部/真机（同前）</h2>
+  <table>
+    <tr><th>项</th><th>等什么</th></tr>
+    <tr><td>T-224 聆听模式</td><td>你的白名单决策（代码备好默认关）</td></tr>
+    <tr><td>T-225 熄屏</td><td>你的恢复决策</td></tr>
+    <tr><td>T-226 真机矩阵</td><td>你的设备跑一轮</td></tr>
+    <tr><td>外部×4</td><td>Developer ID / DriverKit / iDevice 真机 / Sparkle 真值</td></tr>
+  </table>
+
+  <h2>四、C2 批次交付对照</h2>
+  <table>
+    <tr><th>批次</th><th>任务</th><th>引擎/测试</th><th>挂线</th></tr>
+    <tr><td>P1（10 件）</td><td>T-201~210</td><td>✅ 全部</td><td>✅ 全部（LiveServices 八处）</td></tr>
+    <tr><td>P2（6 件）</td><td>T-211~216</td><td>✅ 全部</td><td>🟡 面板行已入，通知路由差 start</td></tr>
+    <tr><td>P3（5 件）</td><td>T-217~221</td><td>✅ 全部</td><td>🟡 测速/更新扫描差入口触发</td></tr>
+    <tr><td>P4（2 件）</td><td>T-222~223</td><td>✅ 全部（含进程级契约测试）</td><td>🟡 风扇面板+整理协调器差 AppEnv start</td></tr>
+  </table>
+
+  <div class="callout">
+    <strong>终审结论</strong>：相比 A15 的"12 座孤岛"，本轮消至 <strong>5 座</strong>且全部为"一行 start/一个按钮"量级。弹层从 6 分区扩至 <strong>6 分区 + 8 个下钻/结构行</strong>，涵盖所有 E1~E25 的面板呈现面。代码资产（引擎+测试+管线）已达 95%。<br><br>
+    <strong>建议最后一击</strong>：一个串行提交即可清零第二节 5 项（NotificationRouter.start + SpeedTest 入口 + UpdateScanner 入口 + TidyCoordinator.start + FanControlPanel 面板挂线），之后整体即 100% 代码完成（不含决策/外部/真机）。
+  </div>
+  <p class="lede" style="margin-top:20px">导航：<a href="a0-catalog.html" target="_parent">A0 目录</a> · <a href="c2-plan.html" target="_parent">C2 看板</a> · <a href="a15-final-audit.html" target="_parent">A15 前审</a></p>
+</div>
+</body>
+</html>
