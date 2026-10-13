@@ -169,7 +169,8 @@ struct NetworkRow: View {
 }
 
 /// 音量行：可写滑杆 + 行内滚轮调节（A2·S3"A14-β 音量可调"）。
-/// 滚轮捕捉层只盖标题卡片区（slider 保留直接拖动——NSView 覆盖会吞掉拖拽手势）
+/// 滚轮捕捉层只盖标题卡片区（slider 保留直接拖动——NSView 覆盖会吞掉拖拽手势）。
+/// 音频输入子行（T-204）挂在滑杆下方：provider 未接线/无读数即隐藏
 private struct VolumeRow: View {
     @ObservedObject var viewModel: PanelViewModel
 
@@ -195,6 +196,13 @@ private struct VolumeRow: View {
             )
             .disabled(!viewModel.isVolumeWritable)
             .padding(.horizontal, 10)
+            if let audio = AudioInputPanelMapping.texts(viewModel.audioInput) {
+                AudioInputRowView(
+                    deviceName: audio.deviceName,
+                    levelText: audio.levelText,
+                    isMuted: audio.isMuted
+                )
+            }
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 10)
@@ -207,6 +215,41 @@ private struct VolumeRow: View {
     static func subtitleText(for volume: VolumeState, writable: Bool) -> String {
         if volume.isMuted { return "已静音" }
         return writable ? "音量 · 行内滚轮可调" : "音量（只读）"
+    }
+}
+
+/// 音频输入行（T-204）：设备名 + 输入音量% + 静音徽标（只展示，输入增益调节归系统）
+private struct AudioInputRowView: View {
+    let deviceName: String
+    let levelText: String
+    let isMuted: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "mic.fill")
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("音频输入").font(.caption)
+                Text(deviceName)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            Text(levelText)
+                .font(.caption)
+                .monospacedDigit()
+            if isMuted {
+                Text("静音")
+                    .font(.caption2)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.orange.opacity(0.25)))
+            }
+        }
+        .padding(.horizontal, 4)
+        .padding(.vertical, 2)
     }
 }
 
@@ -238,16 +281,75 @@ private struct ThermalRow: View {
     }
 }
 
-/// 性能行：占位。CpuMonitor/MemoryMonitor 读路径已在 T-027 就绪，
-// TODO(T-031+ 性能旁路): 面板 VM 增加可见期 CPU/内存旁路采样后回填本行
-private struct PerformanceRow: View {
+/// 性能分区（T-203）：CPU 摘要行 + 内存/网速/GPU 子行，数据经 PerfPanelMapping
+/// 纯函数映射。perfProvider 未接线 → 占位文案（诚实降级）；接线后各域独立降级
+/// （任一域 nil 该行如实 "—"，不影响其余域）
+struct PerformanceRow: View {
+    @ObservedObject var viewModel: PanelViewModel
+
     var body: some View {
-        SectionRowCard(
-            symbolName: PanelSectionID.performance.symbolName,
-            title: PanelSectionID.performance.displayName,
-            value: "—",
-            subtitle: "性能采样待接入"
+        VStack(spacing: 4) {
+            SectionRowCard(
+                symbolName: PanelSectionID.performance.symbolName,
+                title: PanelSectionID.performance.displayName,
+                value: cpuValue,
+                subtitle: cpuSubtitle
+            )
+            if viewModel.isPerfAvailable {
+                let memory = PerfPanelMapping.memoryTexts(viewModel.perfSample?.memory)
+                PerformanceSubRow(title: "内存", value: memory.value, subtitle: memory.subtitle)
+                let net = PerfPanelMapping.netTexts(viewModel.perfSample?.net)
+                PerformanceSubRow(title: "网速", value: net.value, subtitle: net.subtitle)
+                // GPU 行：双 nil 隐藏（T-203 契约——无读数不占行高不显示假 0%）
+                let gpu = PerfPanelMapping.gpuTexts(viewModel.perfSample?.gpu)
+                if let gpuValue = gpu.value {
+                    PerformanceSubRow(title: "GPU", value: gpuValue, subtitle: gpu.subtitle)
+                }
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.quaternary.opacity(0.35))
         )
+    }
+
+    private var cpuValue: String {
+        guard viewModel.isPerfAvailable else { return "—" }
+        return PerfPanelMapping.cpuValueText(viewModel.perfSample?.cpu)
+    }
+
+    private var cpuSubtitle: String {
+        guard viewModel.isPerfAvailable else { return "性能采样未接入" }
+        return PerfPanelMapping.cpuSubtitleText(
+            cpu: viewModel.perfSample?.cpu,
+            topology: viewModel.cpuTopology
+        )
+    }
+}
+
+/// 性能子行（内存/网速/GPU）：紧凑键值行，样式与蓝牙设备行同族
+private struct PerformanceSubRow: View {
+    let title: String
+    let value: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(title)
+                .font(.callout)
+                .frame(width: 36, alignment: .leading)
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Text(value)
+                .font(.callout.weight(.medium))
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
     }
 }
 
@@ -538,6 +640,114 @@ enum HealthScoreColor {
     }
 }
 
+// MARK: - iDevice 占位行（T-205：设备清单 / 空态引导，三态映射纯函数在 MobileBatteryPanelDisplay）
+
+struct MobileBatteryRow: View {
+    let summary: MobileBatterySummary?
+
+    var body: some View {
+        VStack(spacing: 4) {
+            SectionRowCard(
+                symbolName: "iphone",
+                title: "Apple 设备",
+                value: MobileBatteryPanelDisplay.valueText(for: summary),
+                subtitle: MobileBatteryPanelDisplay.subtitleText(for: summary)
+            )
+            if let devices = summary?.devices, !devices.isEmpty {
+                ForEach(devices, id: \.udid) { device in
+                    MobileBatteryDeviceRow(device: device)
+                        .padding(.horizontal, 6)
+                }
+            } else {
+                // 空态引导单行：无设备与 helper 不可用共用（T-205 占位行的本职）
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text(MobileBatteryPanelDisplay.emptyGuidanceText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.quaternary.opacity(0.35))
+        )
+    }
+}
+
+/// 单设备行：图标 + 名称 + 状态 + 电量%（Watch 无电量显示 "—"）
+private struct MobileBatteryDeviceRow: View {
+    let device: MobileBatteryDevice
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: MobileBatteryPanelDisplay.symbolName(for: device.kind))
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(device.name)
+                    .font(.callout)
+                    .lineLimit(1)
+                Text(MobileBatteryPanelDisplay.statusText(charging: device.charging))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            if device.charging == true {
+                Image(systemName: "bolt.fill")
+                    .font(.caption2)
+                    .foregroundStyle(Color.green.opacity(0.8))
+            }
+            Text(MobileBatteryPanelDisplay.batteryText(device.batteryPercent))
+                .font(.caption)
+                .monospacedDigit()
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - 历史入口行（T-207）
+
+struct HistoryEntryRowView: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        Button {
+            viewModel.push(.history)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: PanelRoute.history.symbolName)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("历史记录").font(.headline)
+                    Text("电池健康曲线 · 事件日志 · CSV 导出")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.quaternary.opacity(0.35))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 // MARK: - footer 槽位行（A14-β：当前槽位 + 点击循环）
 
 struct SlotFooterView: View {
@@ -609,6 +819,12 @@ public struct StatusPanelRootView: View {
             if viewModel.showsInfoStrip {
                 InfoStripView(weatherText: viewModel.weatherText, calendarText: viewModel.calendarText)
             }
+            if viewModel.showsMobileBatteryRow {
+                MobileBatteryRow(summary: viewModel.mobileBatterySummary)
+            }
+            if viewModel.showsHistoryEntryRow {
+                HistoryEntryRowView(viewModel: viewModel)
+            }
             if viewModel.showsHealthRow {
                 HealthEntryRowView(viewModel: viewModel)
             }
@@ -643,7 +859,7 @@ public struct StatusPanelRootView: View {
         case .thermal:
             ThermalRow(thermal: viewModel.thermal)
         case .performance:
-            PerformanceRow()
+            PerformanceRow(viewModel: viewModel)
         }
     }
 }

@@ -79,9 +79,28 @@ public final class PanelViewModel: ObservableObject {
     @Published public private(set) var slotLabel: String?
     @Published public private(set) var lastActionOutcome: ActionOutcome?
 
+    // MARK: C2 弹层区新增状态（T-203/204/205/207）
+
+    /// 性能最近一帧（旁路轮询发布；PerfSample 相等性不含时间戳，静默期不重发布）
+    @Published public private(set) var perfSample: PerfSample?
+    /// CPU P/E 拓扑（provider 一次读，开机后不变）
+    @Published public private(set) var cpuTopology: CpuCoreTopology?
+    /// 音频输入旁路（nil = 行隐藏）
+    @Published public private(set) var audioInput: AudioInputStatus?
+    /// iDevice 汇总（nil 与空 devices 都走引导文案；provider 未接线整行隐藏）
+    @Published public private(set) var mobileBatterySummary: MobileBatterySummary?
+    /// 历史页数据（进入下钻页才读，绝不轮询——按需数据）
+    @Published public private(set) var historyDaily: [DailyMetricPoint] = []
+    @Published public private(set) var historyEvents: [EventRow] = []
+    /// 事件类型筛选（nil = 全部）；弹层关闭复位
+    @Published public private(set) var historyEventFilter: String?
+    /// 最近一次 CSV 导出结果（导出按钮的诚实反馈；nil = 本次会话未导出过）
+    @Published public private(set) var lastHistoryExportSucceeded: Bool?
+
     /// 旁路采样启停标志（测试与接线方可观测；不可见恒为 false）
     public var isBypassSamplingActive: Bool {
         bluetoothPollTask != nil || thermalPollTask != nil || connectionPollTask != nil
+            || perfPollTask != nil
     }
 
     /// 实际要渲染的分区：order ∩ visibleSections，保持 order 的排列
@@ -107,6 +126,33 @@ public final class PanelViewModel: ObservableObject {
     public var isActionCenterArmed: Bool { actionExecutor != nil }
     /// 附近网络扫描服务是否已接线（未接线时下钻页给"未接入"占位而非空列表）
     public var isScannerAvailable: Bool { wifiScanner != nil }
+
+    // MARK: C2 弹层区新增计算面
+
+    /// 性能分区是否接线（未接线时分区占位"性能采样未接入"，不显示假零值）
+    public var isPerfAvailable: Bool { perfProvider != nil }
+    /// 音频输入行可见性（provider 未接线或本轮无读数都隐藏）
+    public var showsAudioInputRow: Bool { audioInput != nil }
+    /// iDevice 行可见性：provider 未接线整行隐藏；接线后无论有无设备都展示分区
+    /// （空设备/读不到正是占位行要引导的态）
+    public var showsMobileBatteryRow: Bool { mobileBatteryProvider != nil }
+    /// 历史入口行可见性（读服务未接线不给入口，点了也是空页）
+    public var showsHistoryEntryRow: Bool { historyReader != nil }
+    /// CSV 导出是否接线（未接线按钮隐藏）
+    public var isHistoryExportAvailable: Bool { historyExportClosure != nil }
+    /// 历史页最近加载条数上限（UI 列表上限；DB 全量导出走 CSV）
+    public static let historyEventLimit = 200
+    /// 筛选后的事件行（新在前——recentEvents 升序取尾，展示倒序）
+    public var filteredHistoryEvents: [EventRow] {
+        let filtered = historyEventFilter.map { target in
+            historyEvents.filter { $0.kind == target }
+        } ?? historyEvents
+        return filtered.reversed()
+    }
+    /// 当前数据里出现过的类型集合（筛选 Picker 选项；升序稳定）
+    public var historyEventKindOptions: [String] {
+        Array(Set(historyEvents.map(\.kind))).sorted()
+    }
 
     private let store: SystemStatusStore
     private let bluetooth: any BluetoothMonitoring
@@ -138,11 +184,21 @@ public final class PanelViewModel: ObservableObject {
     private let openExternal: @MainActor (URL) -> Void
     private let volumeClock: () -> Date
 
+    // MARK: C2 弹层区注入（T-203/204/205/207；主线接线清单见各 typealias 注记）
+
+    private let perfProvider: PerfSampleProvider?
+    private let cpuTopologyProvider: CpuTopologyProvider?
+    private let audioInputProvider: AudioInputStatusProvider?
+    private let mobileBatteryProvider: MobileBatterySummaryProvider?
+    private let historyReader: (any HistoryReading)?
+    private let historyExportClosure: HistoryExportClosure?
+
     private var scanTask: Task<Void, Never>?
     private var batteryDetailTask: Task<Void, Never>?
     private var pendingVolumeWriteTask: Task<Void, Never>?
     private var lastVolumeWriteAt: Date?
     private var hidConfirm = HIDConfirmModel()
+    private var perfPollTask: Task<Void, Never>?
 
     /// 动作中心面板行数据（注入的表原样透出；空表 = 顶部动作行隐藏）
     public var actions: [ButlerAction] { actionsValue }
@@ -170,7 +226,13 @@ public final class PanelViewModel: ObservableObject {
         healthReportProvider: HealthReportProvider? = nil,
         slotCycler: (any SlotCycling)? = nil,
         openExternal: (@MainActor (URL) -> Void)? = nil,
-        volumeClock: (() -> Date)? = nil
+        volumeClock: (() -> Date)? = nil,
+        perfProvider: PerfSampleProvider? = nil,
+        cpuTopologyProvider: CpuTopologyProvider? = nil,
+        audioInputProvider: AudioInputStatusProvider? = nil,
+        mobileBatteryProvider: MobileBatterySummaryProvider? = nil,
+        historyReader: (any HistoryReading)? = nil,
+        historyExport: HistoryExportClosure? = nil
     ) {
         self.store = store
         self.bluetooth = bluetooth
@@ -198,6 +260,12 @@ public final class PanelViewModel: ObservableObject {
         self.slotCycler = slotCycler
         self.openExternal = openExternal ?? { PanelViewModel.defaultOpenExternal($0) }
         self.volumeClock = volumeClock ?? { Date() }
+        self.perfProvider = perfProvider
+        self.cpuTopologyProvider = cpuTopologyProvider
+        self.audioInputProvider = audioInputProvider
+        self.mobileBatteryProvider = mobileBatteryProvider
+        self.historyReader = historyReader
+        self.historyExportClosure = historyExport
         bind()
     }
 
@@ -206,6 +274,7 @@ public final class PanelViewModel: ObservableObject {
         bluetoothPollTask?.cancel()
         thermalPollTask?.cancel()
         connectionPollTask?.cancel()
+        perfPollTask?.cancel()
         scanTask?.cancel()
         batteryDetailTask?.cancel()
         pendingVolumeWriteTask?.cancel()
@@ -235,6 +304,8 @@ public final class PanelViewModel: ObservableObject {
         volumeOverride = nil
         hidConfirm.reset()
         hidArmedAddress = nil
+        // 历史筛选随导航栈复位（transient 弹层重开不该记住上次的筛选）
+        historyEventFilter = nil
     }
 
     /// 更新分区布局（设置页显隐勾选/拖动排序接入用）；非法布局原样拒绝，不半途应用
@@ -257,6 +328,8 @@ public final class PanelViewModel: ObservableObject {
             refreshBatteryDetails()
         case .healthReport:
             refreshHealthReport()
+        case .history:
+            refreshHistory()
         }
     }
 
@@ -435,6 +508,18 @@ public final class PanelViewModel: ObservableObject {
         if let calendarProvider {
             calendarText = calendarProvider()
         }
+        // C2 弹层区（T-203/204/205）：拓扑一次读；音频输入与 iDevice 是出现瞬间的
+        // 快照拉取（新鲜度归 provider 侧缓存——闭包是同步契约，子进程/异步往返
+        // 由主线在 provider 背后完成）
+        if let cpuTopologyProvider {
+            cpuTopology = cpuTopologyProvider()
+        }
+        if let audioInputProvider {
+            audioInput = audioInputProvider()
+        }
+        if let mobileBatteryProvider {
+            mobileBatterySummary = mobileBatteryProvider()
+        }
     }
 
     public func refreshHealthReport() {
@@ -535,6 +620,31 @@ public final class PanelViewModel: ObservableObject {
                 }
             }
         }
+        // 性能（T-203）：provider 是即时值读取（引擎总线最近一帧），粗间隔拉取即可；
+        // 引擎自身的"有人看才采样"启停归主线（PerfSampleProvider 注记），此处只是读端
+        if perfProvider != nil {
+            perfPollTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    if let self {
+                        self.refreshPerfOnce()
+                    }
+                    guard let self, !Task.isCancelled else { return }
+                    try? await Task.sleep(
+                        for: self.bypassPollInterval,
+                        tolerance: self.bypassPollInterval / 5
+                    )
+                }
+            }
+        }
+    }
+
+    /// 性能旁路单次拉取（轮询循环本体；相等帧不重发布——订阅去重铁律在源头兑现）
+    public func refreshPerfOnce() {
+        guard let perfProvider else { return }
+        let sample = perfProvider()
+        if sample != perfSample {
+            perfSample = sample
+        }
     }
 
     private func stopBypassSampling() {
@@ -544,6 +654,40 @@ public final class PanelViewModel: ObservableObject {
         thermalPollTask = nil
         connectionPollTask?.cancel()
         connectionPollTask = nil
+        perfPollTask?.cancel()
+        perfPollTask = nil
+    }
+
+    // MARK: - 历史查看页（T-207：按需数据，进入页面才读一次，绝不轮询）
+
+    /// 读取历史数据（push(.history) 自动触发；也可手动刷新）
+    public func refreshHistory() {
+        guard let historyReader else { return }
+        historyDaily = historyReader.dailySeries()
+        historyEvents = historyReader.recentEvents(limit: Self.historyEventLimit)
+        // 筛选值在新数据里已不存在（如清理后）→ 归零"全部"，避免卡在空筛选
+        if let filter = historyEventFilter,
+           !historyEvents.contains(where: { $0.kind == filter }) {
+            historyEventFilter = nil
+        }
+    }
+
+    /// 事件类型筛选（nil = 全部）
+    public func setHistoryEventFilter(_ kind: String?) {
+        historyEventFilter = kind
+    }
+
+    /// 导出当前筛选的事件为 CSV（所见即所得）。未接线返回 false 不伪装成功；
+    /// 内容复用引擎侧 HistoryCSV（转义口径单源）
+    @discardableResult
+    public func exportHistoryCSV() -> Bool {
+        guard let historyExportClosure else { return false }
+        let events = filteredHistoryEvents.map {
+            HistoryEvent(id: $0.id, at: $0.at, kind: $0.kind, detail: $0.detail)
+        }
+        let succeeded = historyExportClosure("statusbutler-history.csv", HistoryCSV.eventsToCSV(events))
+        lastHistoryExportSucceeded = succeeded
+        return succeeded
     }
 }
 
