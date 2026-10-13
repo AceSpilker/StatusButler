@@ -111,6 +111,12 @@ public enum PanelRoute: String, Equatable, Sendable, CaseIterable {
     case healthReport
     /// 历史查看（E10：电池健康曲线 + 事件日志 + CSV 导出，T-207）
     case history
+    /// 电池养护（E13：充电上限/优化充电状态行 + 月度小结，T-212）
+    case batteryCare
+    /// 插件管理（E16·SP-03：扫描列表 + 启停/重载 + 三连击复位说明，T-213）
+    case plugins
+    /// 更新扫描（E25·UPDT-01：brew cask 比对提示 + 官网深链，T-221）
+    case updateScan
 
     public var title: String {
         switch self {
@@ -119,6 +125,9 @@ public enum PanelRoute: String, Equatable, Sendable, CaseIterable {
         case .batteryDetails: return "电池详情"
         case .healthReport: return "体检报告"
         case .history: return "历史记录"
+        case .batteryCare: return "电池养护"
+        case .plugins: return "插件管理"
+        case .updateScan: return "检查更新"
         }
     }
 
@@ -129,6 +138,9 @@ public enum PanelRoute: String, Equatable, Sendable, CaseIterable {
         case .batteryDetails: return "battery.100.bolt"
         case .healthReport: return "stethoscope"
         case .history: return "chart.xyaxis.line"
+        case .batteryCare: return "battery.75"
+        case .plugins: return "puzzlepiece"
+        case .updateScan: return "arrow.triangle.2.circlepath"
         }
     }
 }

@@ -44,6 +44,9 @@ struct PanelPageContainer: View {
         case .batteryDetails: BatteryDetailsPage(viewModel: viewModel)
         case .healthReport: HealthReportPage(viewModel: viewModel)
         case .history: HistoryPage(viewModel: viewModel)
+        case .batteryCare: BatteryCarePage(viewModel: viewModel)
+        case .plugins: PluginManagerPage(viewModel: viewModel)
+        case .updateScan: UpdateScanPage(viewModel: viewModel)
         }
     }
 }
@@ -725,6 +728,423 @@ struct HistoryEventRowView: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
+    }
+}
+
+// MARK: - 电池养护页（E13/T-212：充电上限/优化充电状态行 + 健康曲线 + 月度小结）
+
+struct BatteryCarePage: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                overviewSection
+                chartSection
+                monthlySection
+            }
+        }
+    }
+
+    // MARK: 养护总览（充电域只读；上限读不到是 macOS 现状，如实降级）
+
+    private var overviewSection: some View {
+        GroupBox("养护总览") {
+            VStack(alignment: .leading, spacing: 0) {
+                if let details = viewModel.batteryDetail {
+                    DetailLine(
+                        title: "健康度",
+                        value: healthText(details),
+                        valueColor: careHealthColor(details)
+                    )
+                    DetailLine(title: "循环次数", value: details.cycleCount.map(String.init) ?? "—")
+                    DetailLine(
+                        title: "充电状态",
+                        value: BatteryCareMapping.chargingStateText(
+                            externalConnected: details.externalConnected,
+                            isCharging: details.isCharging
+                        ),
+                        valueColor: details.isCharging ? Color.green : Color.primary
+                    )
+                } else {
+                    Text("未读到电池信息（台式机无 AppleSmartBattery，或详情读取服务未接入）")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 4)
+                }
+                DetailLine(title: "充电上限", value: BatteryCareMapping.chargeLimitMissingText)
+                Text(BatteryCareMapping.chargeLimitExplanation)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("优化充电的开关也在系统设置内（学习充电习惯、暂缓充满）")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer(minLength: 4)
+                    Button {
+                        viewModel.openBatterySettings()
+                    } label: {
+                        Label("去电池设置", systemImage: "arrow.up.forward.app")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.blue.opacity(0.18)))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 2)
+            }
+            .padding(.vertical, 2)
+        }
+    }
+
+    // MARK: 健康曲线（复用 T-207 折线与 80% 参考线口径）
+
+    private var chartSection: some View {
+        GroupBox("电池健康（每日容量%）") {
+            let points = BatteryCareMapping.chartPoints(from: viewModel.careDaily)
+            if points.isEmpty {
+                Text("暂无每日记录——后台每天记一行，数天后这里出现趋势曲线")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    BatteryHealthChartView(series: points)
+                        .frame(height: 110)
+                    HStack {
+                        Text(points.first?.date ?? "")
+                        Spacer()
+                        if let latest = points.last {
+                            Text("最新 \(latest.batteryCapacityPercent)%")
+                        }
+                        Spacer()
+                        Text(points.last?.date ?? "")
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    // MARK: 月度小结（E10 metric_daily 聚合）
+
+    private var monthlySection: some View {
+        GroupBox("月度小结") {
+            if viewModel.careMonthly.isEmpty {
+                Text("暂无月度数据")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            } else {
+                // 新月份在前（用户最关心最近一个月）
+                ForEach(viewModel.careMonthly.reversed()) { summary in
+                    CareMonthlyRow(summary: summary)
+                }
+            }
+        }
+    }
+
+    private func healthText(_ details: BatteryDetails) -> String {
+        BatteryDetailsMapping.healthPercent(
+            maxCapacity: details.maxCapacity,
+            designCapacity: details.designCapacity
+        ).map { "\($0)%" } ?? "—"
+    }
+
+    private func careHealthColor(_ details: BatteryDetails) -> Color {
+        switch BatteryHealthTier.tier(
+            forHealthPercent: BatteryDetailsMapping.healthPercent(
+                maxCapacity: details.maxCapacity,
+                designCapacity: details.designCapacity
+            )
+        ) {
+        case .normal: return .green
+        case .attention: return .orange
+        case .replace: return .red
+        case nil: return .primary
+        }
+    }
+}
+
+/// 单月小结行：月份标题行 + 三项指标（均值/增减/充电次数）
+private struct CareMonthlyRow: View {
+    let summary: CareMonthlySummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                Text(summary.monthKey)
+                    .font(.callout.weight(.medium))
+                    .monospacedDigit()
+                Text("记录 \(summary.recordedDays) 天")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                Text("充电 \(summary.chargeStartCount) 次")
+                    .font(.caption2)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            HStack(spacing: 14) {
+                Text("容量均值 \(summary.averageCapacityPercent.map { "\($0)%" } ?? "—")")
+                if let delta = summary.capacityDelta {
+                    Text("容量 \(delta >= 0 ? "+" : "")\(delta)%")
+                        .foregroundStyle(delta < 0 ? Color.orange : Color.secondary)
+                } else {
+                    Text("容量 —")
+                        .foregroundStyle(.secondary)
+                }
+                if let cycle = summary.cycleDelta {
+                    Text("循环 +\(cycle)")
+                }
+            }
+            .font(.caption2)
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - 插件管理页（E16·SP-03/T-213：扫描列表 + 健康状态 + 重载 + 三连击说明）
+
+struct PluginManagerPage: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                if viewModel.pluginRows.isEmpty {
+                    VStack(spacing: 6) {
+                        Image(systemName: "puzzlepiece")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        Text("未发现有效插件")
+                            .font(.callout)
+                        Text("把 manifest.json + script.sh 放进 ~/Library/Application Support/StatusButler/plugins/<目录>/ 后回来重扫")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                } else {
+                    ForEach(viewModel.pluginRows) { row in
+                        PluginManagerRow(row: row) {
+                            viewModel.reloadPlugin(row.id)
+                        }
+                    }
+                }
+                Text(PluginPanelMapping.tripleStrikeExplanation)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 2)
+            }
+        }
+    }
+}
+
+/// 单插件行：manifest 字段 + 健康徽标 + 重载按钮
+private struct PluginManagerRow: View {
+    let row: PluginRowState
+    let onReload: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "puzzlepiece.fill")
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(row.name).font(.callout)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            healthBadge
+            Button(action: onReload) {
+                Label(PluginPanelMapping.needsReset(row.health) ? "重载并复位" : "重载",
+                      systemImage: "arrow.clockwise")
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.secondary.opacity(0.2)))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.quaternary.opacity(0.35))
+        )
+    }
+
+    private var subtitle: String {
+        var parts = ["\(URL(fileURLWithPath: row.interpreter).lastPathComponent) · \(row.refreshHintSeconds)s"]
+        if let author = row.author, !author.isEmpty {
+            parts.append(author)
+        }
+        if row.failureCount > 0 {
+            parts.append("连败 \(row.failureCount)")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    @ViewBuilder private var healthBadge: some View {
+        let (color, text) = badgePair
+        Text(text)
+            .font(.caption2)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(Capsule().fill(color.opacity(0.22)))
+            .foregroundStyle(color)
+    }
+
+    private var badgePair: (Color, String) {
+        switch row.health {
+        case .healthy: return (.green, "正常")
+        case .degraded: return (.orange, "连败中")
+        case .stopped: return (.red, "已停用")
+        }
+    }
+}
+
+// MARK: - 更新扫描页（E25·UPDT-01/T-221：比对结果 + 官网深链，纯提示不代装）
+
+struct UpdateScanPage: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Button {
+                        viewModel.checkForUpdates()
+                    } label: {
+                        HStack(spacing: 5) {
+                            if viewModel.isUpdateScanning {
+                                ProgressView().controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            Text(viewModel.isUpdateScanning ? "检查中…" : "重新检查")
+                        }
+                        .font(.callout)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(.secondary.opacity(0.15)))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(viewModel.isUpdateScanning)
+                    Spacer()
+                    Text(viewModel.updateScanSummary ?? "比对 Homebrew cask 数据源，只提示不代装")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.trailing)
+                }
+                if viewModel.updateResults.isEmpty {
+                    VStack(spacing: 6) {
+                        Image(systemName: PanelRoute.updateScan.symbolName)
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        Text(emptyText)
+                            .font(.callout)
+                        Text("扫描本地 brew cask 清单并比对官方 API 版本；三道网络闸（https+域名白名单/DNS 全公网/同域重定向）与天气域同纪律")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                } else {
+                    ForEach(viewModel.updateResults) { update in
+                        UpdateScanRow(update: update) {
+                            viewModel.openCaskHomepage(update)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var emptyText: String {
+        viewModel.isUpdateScanning ? "正在读取本地清单并比对…" : "尚无结果，点「重新检查」开始"
+    }
+}
+
+/// 单 cask 结果行：名字 + 版本走向 + 可更新徽标 + 官网深链
+private struct UpdateScanRow: View {
+    let update: CaskUpdate
+    let onOpenHomepage: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "shippingbox")
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(update.name).font(.callout)
+                Text(versionText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+            Spacer(minLength: 4)
+            if update.isOutdated == true {
+                Text("可更新")
+                    .font(.caption2)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.orange.opacity(0.25)))
+                    .foregroundStyle(.orange)
+            } else if update.isOutdated == nil {
+                Text("无法比对")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            if update.homepageURL != nil {
+                Button(action: onOpenHomepage) {
+                    Label("官网", systemImage: "arrow.up.forward.app")
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.blue.opacity(0.18)))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.quaternary.opacity(0.35))
+        )
+    }
+
+    private var versionText: String {
+        switch (update.installedVersion, update.latestVersion) {
+        case let (local?, latest?):
+            return local == latest ? "已装 \(local)" : "已装 \(local) → 最新 \(latest)"
+        case let (nil, latest?):
+            return "本地版本未知 · 最新 \(latest)"
+        case let (local?, nil):
+            return "已装 \(local) · 远端版本未知"
+        default:
+            return "版本未知"
+        }
     }
 }
 
