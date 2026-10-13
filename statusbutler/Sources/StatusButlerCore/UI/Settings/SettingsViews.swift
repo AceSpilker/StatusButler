@@ -153,6 +153,16 @@ public struct GeneralPane: View {
                     .fixedSize()
                 }
             }
+            Section("iCloud 同步") {
+                // T-219 / E8：默认关。开关只落偏好——开机装配（LiveServices）读它决定
+                // 是否挂同步协调器；面板状态行如实报告容器可用性（检测不轮询，出现即探一次）
+                PreferenceCheckboxRow(
+                    "同步设置与主题",
+                    subtitle: "范围：设置 + 主题两块 JSON，经 iCloud 私有库（默认关）",
+                    isOn: $settings.iCloudSyncEnabled
+                )
+                iCloudStatusRow()
+            }
             Section("天气") {
                 // T-201 / A8·WX-01：默认手动城市。未配置 = 天气静默（不取数不报错），
                 // 槽位里只显示降级文案；配置后 WeatherFeed 按 30 分钟节拍取数（集成注记见 WeatherCityCatalog.swift 头）
@@ -205,6 +215,23 @@ public struct GeneralPane: View {
 
     private func l10n(_ key: LocalizationKey) -> String {
         settings.localization.string(key)
+    }
+}
+
+/// iCloud 容器状态行（T-219）：出现即探一次 + 手动"重新检测"，检测中禁按钮防连点。
+/// 降级文案走 ICloudSyncStatus.message 纯映射，含"缺 entitlements/容器未建"的清单指引
+private struct iCloudStatusRow: View {
+    @State private var status = ICloudSyncStatus.checking
+
+    var body: some View {
+        PreferenceRow("容器状态", subtitle: status.message) {
+            Button("重新检测") {
+                status = .checking
+                Task { status = await ICloudAvailability.probe() }
+            }
+            .disabled(status == .checking)
+        }
+        .task { status = await ICloudAvailability.probe() }
     }
 }
 
@@ -270,6 +297,17 @@ public struct AppearancePane: View {
                     .labelsHidden()
                     .frame(maxWidth: 240)
                 }
+                // T-220 / E24：默认关。皮肤挂在三个文本槽（时钟/磁盘/电池%）上，
+                // 帧驱动与渲染接线见 StatusIconRenderer 侧 TODO（充电时钟节拍）
+                PreferenceRow("趣味皮肤", subtitle: "底槽文本旁的小动画（CPU 负载驱动帧率，默认关）") {
+                    Picker("趣味皮肤", selection: $settings.animatedSkin) {
+                        Text("关闭").tag(String?.none)
+                        Text("跑猫").tag(String?.some(AnimatedSkinCatalog.runningCatID))
+                        Text("游鱼").tag(String?.some(AnimatedSkinCatalog.swimmingFishID))
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
             }
             Section("主题") {
                 // T-208：导入前差异预览、应用后跳过项可见（E7·TH-03/05），导出是当前配置的快照
@@ -282,6 +320,36 @@ public struct AppearancePane: View {
                 importFeedback
                 exportFeedback
             }
+            // T-214 / E23：昼夜主题——跟随系统明暗外观在两套预设间切（默认关）。
+            // 集成注记（主线接线）：组合根（LiveServices.start）构造
+            // DaylightSwitcher(settings:).start() 即全 App 生效，本页只改设置不持实例
+            Section("昼夜主题") {
+                PreferenceCheckboxRow(
+                    "跟随系统外观切换",
+                    subtitle: "系统外观变亮/变暗时自动应用对应预设（默认关）",
+                    isOn: $settings.autoDaylightTheme
+                )
+                PreferenceRow("日间主题", subtitle: "系统外观为亮色时应用") {
+                    Picker("日间主题", selection: $settings.daylightTheme) {
+                        ForEach(ThemePresets.all.keys.sorted(), id: \.self) { key in
+                            Text(key).tag(key)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+                PreferenceRow("夜间主题", subtitle: "系统外观为暗色时应用") {
+                    Picker("夜间主题", selection: $settings.dayNightTheme) {
+                        ForEach(ThemePresets.all.keys.sorted(), id: \.self) { key in
+                            Text(key).tag(key)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
+            }
+            // T-214 / E14：外接屏 DDC 亮度滑杆 + 昼夜自动调光（默认关）
+            ExternalDisplaySection(settings: settings)
         }
     }
 

@@ -74,6 +74,10 @@ public enum StatusIconRenderer {
 
     static func drawSlotText(_ slot: SlotScene, pointSize: CGFloat, dark: Bool, in image: NSImage) {
         guard let text = slot.valueText else { return }
+        // TODO(T-220 渲染接线): slot.animatedSkin 非 nil 时在文本左侧叠
+        // skin.frame(at: CACurrentMediaTime()) 的 SF Symbol——动画帧率由充电时钟
+        // （ChargingEffectClock 的 20fps 节拍）驱动重绘，此处不另起定时器（能效铁律）；
+        // 图标缓存 key（StatusBarController.render）届时需把帧序号纳入比较
         let font = NSFont.monospacedDigitSystemFont(ofSize: max(pointSize * 0.38, 7), weight: .semibold)
         let color: NSColor = slot.isWarning ? Palette.adaptive(dark: dark).lowBattery : Palette.adaptive(dark: dark).ink
         let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color]

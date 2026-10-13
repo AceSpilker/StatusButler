@@ -25,6 +25,11 @@ public final class SettingsStore: ObservableObject {
         static let weatherCityName = "weatherCityName"
         static let hotKeyAssignments = "hotKeyAssignments"
         static let panelLayout = "panelLayout"
+        static let autoDaylightTheme = "autoDaylightTheme"
+        static let daylightTheme = "daylightTheme"
+        static let dayNightTheme = "dayNightTheme"
+        static let autoBrightness = "autoBrightness"
+        static let animatedSkin = "animatedSkin"
         // telemetryConsent 走 TelemetryPolicy.consentKey（与调度器持久层同键互读，
         // 单点登记在 TelemetryPolicy，此处不另设键防两处漂移）
     }
@@ -100,6 +105,41 @@ public final class SettingsStore: ObservableObject {
     /// iCloud 设置同步总开关（E8，默认关）
     @Published public var iCloudSyncEnabled: Bool {
         didSet { defaults.set(iCloudSyncEnabled, forKey: Key.iCloudSync) }
+    }
+
+    /// 昼夜主题自动切换总开关（T-214 / E23，默认关）：开 = 跟随系统明暗外观
+    /// 在 daylight/dayNight 两套预设间切（DaylightSwitcher 消费；日出日落口径见其头注释）
+    @Published public var autoDaylightTheme: Bool {
+        didSet { defaults.set(autoDaylightTheme, forKey: Key.autoDaylightTheme) }
+    }
+
+    /// 昼间主题预设键（T-214）：值必须是 ThemePresets.all 的键；脏值（主题包导入后被删的
+    /// 预设名等）在 DaylightSwitcher 侧按"查不到预设即不切换"静默兜底，此处不做白名单校验
+    @Published public var daylightTheme: String {
+        didSet { defaults.set(daylightTheme, forKey: Key.daylightTheme) }
+    }
+
+    /// 夜间主题预设键（T-214）：同 daylightTheme 的兜底口径
+    @Published public var dayNightTheme: String {
+        didSet { defaults.set(dayNightTheme, forKey: Key.dayNightTheme) }
+    }
+
+    /// 外接屏昼夜自动调光（T-214 / E14 DDC-03，默认关）：开 = 外观变化触发
+    /// DaylightBrightnessRule 求值 → 渐变写入（面板侧 DaylightBrightnessController 消费）
+    @Published public var autoBrightness: Bool {
+        didSet { defaults.set(autoBrightness, forKey: Key.autoBrightness) }
+    }
+
+    /// 趣味动画皮肤（T-220 / E24，默认 nil = 关）：值为 AnimatedSkinCatalog 的皮肤 id
+    /// （runningCat / swimmingFish）。渲染接线见 StatusIconRenderer 侧 TODO
+    @Published public var animatedSkin: String? {
+        didSet {
+            if let animatedSkin {
+                defaults.set(animatedSkin, forKey: Key.animatedSkin)
+            } else {
+                defaults.removeObject(forKey: Key.animatedSkin)
+            }
+        }
     }
 
     /// 天气城市（T-201 / A8·WX-01 默认手动城市）：存城市中文名（WeatherCityCatalog.name 即键）。
@@ -189,14 +229,21 @@ public final class SettingsStore: ObservableObject {
             launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
         }
         appLanguage = AppLanguage(rawValue: defaults.string(forKey: Key.appLanguage) ?? "") ?? .system
-        if defaults.object(forKey: Key.naturalScrolling) == nil {
-            defaults.set(true, forKey: Key.naturalScrolling)
+        // T-214/E23：昼夜主题三键。bool 默认关；预设键默认昼 colorful / 夜 darkNight
+        //（ThemePresets.all 内建键，启动即合法）。脏值兜底在消费侧（见属性注释）
+        if defaults.object(forKey: Key.autoDaylightTheme) == nil {
+            defaults.set(false, forKey: Key.autoDaylightTheme)
         }
-        naturalVolumeScrolling = defaults.bool(forKey: Key.naturalScrolling)
-        if defaults.object(forKey: Key.iCloudSync) == nil {
-            defaults.set(false, forKey: Key.iCloudSync)
+        autoDaylightTheme = defaults.bool(forKey: Key.autoDaylightTheme)
+        daylightTheme = defaults.string(forKey: Key.daylightTheme) ?? "colorful"
+        dayNightTheme = defaults.string(forKey: Key.dayNightTheme) ?? "darkNight"
+        // T-214/E14：外接屏昼夜自动调光，默认关（隐私/能效保守口径与 E8/E24 一致）
+        if defaults.object(forKey: Key.autoBrightness) == nil {
+            defaults.set(false, forKey: Key.autoBrightness)
         }
-        iCloudSyncEnabled = defaults.bool(forKey: Key.iCloudSync)
+        autoBrightness = defaults.bool(forKey: Key.autoBrightness)
+        // T-220/E24：趣味皮肤默认关（nil），非法皮肤 id 同样在消费侧按"查不到=不启用"兜底
+        animatedSkin = defaults.string(forKey: Key.animatedSkin)
         telemetryConsent = TelemetryConsent(rawValue: defaults.string(forKey: TelemetryPolicy.consentKey) ?? "") ?? .notAsked
         weatherCity = defaults.string(forKey: Key.weatherCityName)
         if let data = defaults.data(forKey: Key.hotKeyAssignments),

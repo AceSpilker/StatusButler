@@ -82,8 +82,8 @@
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">审计出处</th><th style="width:70px">状态</th></tr>
     <tr><td>T-217</td><td>网络测速（E17）：networkQuality 封装 + 弹层"测一下"入口 + 结果入 E10 历史</td><td>E17</td><td><span class="badge b-gray">未开始</span></td></tr>
     <tr><td>T-218</td><td>磁盘 I/O 与空间预警（E19）：采样器 + 性能面板第四图 + 低于阈值通知（并入 T-215 通道）</td><td>E19</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-219</td><td>iCloud 设置收尾（E8）：GeneralPane 开关 UI + entitlements 模板文件 + 容器配置用户清单（容器创建本身属外部）</td><td>E8</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-220</td><td>趣味皮肤（E24）：CPU 负载驱动小动画槽位皮肤，默认关、随主题分发</td><td>E24</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-219</td><td>iCloud 设置收尾（E8）：GeneralPane 开关 UI + entitlements 模板文件 + 容器配置用户清单（容器创建本身属外部）</td><td>E8</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-220</td><td>趣味皮肤（E24）：CPU 负载驱动小动画槽位皮肤，默认关、随主题分发</td><td>E24</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-221</td><td>更新扫描（E25）：Homebrew cask 数据源比对提示（https 三道闸纪律），不代装</td><td>E25</td><td><span class="badge b-gray">未开始</span></td></tr>
   </table>
 
@@ -116,6 +116,7 @@
     <tr><td>T-210</td><td>2026-10-13</td><td>Dock 锚定半件 2 用例：anchorFrame 纯函数（含屏选择 / 越界钳进 fallback / 无屏放弃）+ WindowServer 能力守卫用例（show(at:) 锚定窗在役、弹层位于点位上方、toggle 收起即撤窗不留孤儿窗）；App 侧调用点改法见 StatusPopoverController.swift 集成注记；音量 up/down 步进待接——任务进行中</td><td>本提交</td></tr>
   
     <tr><td>P1 终集成</td><td>2026-10-13</td><td>4 agent 并行交付（ζ 702/η 697/θ 699/ι 696 各分支全绿）→ 主线合并+GPU 占位消解+LiveServices 八处挂线（城市闭包/DDC 路由/perf+GPU/输入/iDevice/热键整组重注册/布局热应用/音量步进）；全量 <strong>92 套件 754 用例全绿</strong>（+74）</td><td>本提交</td></tr>
+    <tr><td>T-214/219/220</td><td>2026-10-13</td><td>swift build + swift test 两遍全绿（<strong>93 套件 773 用例</strong>，+19）；新增 ThemeDisplayZoneTests 19 用例：昼夜相位外观名映射（含未知名亮色兜底）/昼夜三键默认值合法预设与持久化往返/Switcher 亮暗→对应预设（minimal 16pt ↔ darkNight 18pt）/开关关或预设键脏值不切换不崩/同相位去抖不重放、关再开清记忆重裁决；滑杆映射取整钳制与读不到回落 50/调光计划无起点直写终值、有起点走 BrightnessRamp 等差/reevaluate 注入假 DDC 屏断言写入序列=渐变序列、夜间无起点直写夜值/无外接屏零写入静默；iCloud 开关默认关与持久化/entitlements 模板 plist 解析（容器 id==CloudKitStore 常量、services==[CloudKit]）/错误分流（accountUnavailable↔missingEntitlement↔带原因降级）与五态文案非空/probe 注入闭包成败两态+清单文案含容器与 record type；皮肤帧表完整（跑猫 4 帧/游鱼 3 帧、无空帧、fps 域内）/fps 钳制（≤1/≥12）与脏帧剔除、全脏退化 [symbol]/环形取帧（时刻步进/回卷/负时兜底）/SlotScene 默认 nil、三文本槽注入才带标记且文本不被顶掉/animatedSkin 设置默认关与持久化清除。渲染端接线留注记（StatusIconRenderer TODO：帧驱动挂充电时钟节拍）；DaylightSwitcher/皮肤主线接线注记在 AppearancePane/SlotRegistry</td><td>本提交 (T-214, T-219, T-220)</td></tr>
   </table>
 
   <div class="callout">📌 执行方式延续：P1/P2 适合 4~5 agent 并行（文件分区：设置区/弹层区/服务区），P3 串行或小并行，P4 逐项（T-222 单独一轮）。每个任务完成即更新本表+测试报告+commit 尾注 <code>(T-2xx)</code>。</div>

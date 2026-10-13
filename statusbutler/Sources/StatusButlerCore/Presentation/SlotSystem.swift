@@ -9,12 +9,16 @@ public struct SlotScene: Equatable, Sendable {
     public var valueText: String?
     public var level: Int?        // 0...4 分级点
     public var isWarning: Bool    // true = 红色警示
+    /// 趣味动画皮肤标记（T-220 / E24，默认 nil = 不启用）：非 nil 时底槽文本旁
+    /// 叠一枚循环播放的 SF Symbol 帧。渲染端接线见 StatusIconRenderer 侧 TODO
+    public var animatedSkin: SkinFrame?
 
-    public init(symbol: String? = nil, valueText: String? = nil, level: Int? = nil, isWarning: Bool = false) {
+    public init(symbol: String? = nil, valueText: String? = nil, level: Int? = nil, isWarning: Bool = false, animatedSkin: SkinFrame? = nil) {
         self.symbol = symbol
         self.valueText = valueText
         self.level = level
         self.isWarning = isWarning
+        self.animatedSkin = animatedSkin
     }
 }
 
@@ -44,24 +48,29 @@ public struct VolumeSlot: SlotSource {
 
 public struct ClockSlot: SlotSource {
     public let id = "clock"
-    public init() {}
+    /// T-220：注入即该槽场景携带动画标记（默认 nil 不启用）。三个文本槽
+    /// （clock/diskFree/batteryPercent）是皮肤的挂载面；数值槽不参与
+    private let animatedSkin: SkinFrame?
+    public init(animatedSkin: SkinFrame? = nil) { self.animatedSkin = animatedSkin }
     public func scene(snapshot: StatusSnapshot, now: Date) -> SlotScene? {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
-        return SlotScene(symbol: nil, valueText: formatter.string(from: now), level: nil)
+        return SlotScene(symbol: nil, valueText: formatter.string(from: now), level: nil, animatedSkin: animatedSkin)
     }
 }
 
 public struct BatteryPercentSlot: SlotSource {
     public let id = "batteryPercent"
-    public init() {}
+    private let animatedSkin: SkinFrame?
+    public init(animatedSkin: SkinFrame? = nil) { self.animatedSkin = animatedSkin }
     public func scene(snapshot: StatusSnapshot, now: Date) -> SlotScene? {
         guard case .battery(let level, _) = snapshot.battery else { return nil }
         return SlotScene(
             symbol: "battery.100",
             valueText: "\(level)%",
             level: Int((Double(level) / 100 * 4).rounded()),
-            isWarning: level <= 20
+            isWarning: level <= 20,
+            animatedSkin: animatedSkin
         )
     }
 }
@@ -69,13 +78,15 @@ public struct BatteryPercentSlot: SlotSource {
 public struct DiskFreeSlot: SlotSource {
     public let id = "diskFree"
     private let available: @Sendable () -> Int64?
-    public init(available: @escaping @Sendable () -> Int64? = { nil }) {
+    private let animatedSkin: SkinFrame?
+    public init(available: @escaping @Sendable () -> Int64? = { nil }, animatedSkin: SkinFrame? = nil) {
         self.available = available
+        self.animatedSkin = animatedSkin
     }
     public func scene(snapshot: StatusSnapshot, now: Date) -> SlotScene? {
         guard let bytes = available() else { return nil }
         let gb = Double(bytes) / 1e9
-        return SlotScene(symbol: "internaldrive", valueText: String(format: "%.0fG", gb), level: nil)
+        return SlotScene(symbol: "internaldrive", valueText: String(format: "%.0fG", gb), level: nil, animatedSkin: animatedSkin)
     }
 }
 
@@ -360,6 +371,14 @@ public enum SlotRegistry {
 
     /// 首批可用源的惰性单例（A8·SL-02 全表；首次访问即完成一次插件扫描）
     public static let builtin: [String: any SlotSource] = slots(pluginRoot: nil)
+
+    /// 集成注记（T-220 主线接线）：皮肤设置项（SettingsStore.animatedSkin，默认 nil=关）→
+    /// 三文本槽的注入点在组合根（LiveServices/StatusBarController 侧），形态：
+    ///     let skin = AnimatedSkinCatalog.skin(named: settings.animatedSkin)
+    ///     map["clock"] = ClockSlot(animatedSkin: skin)
+    ///     map["diskFree"] = DiskFreeSlot(available: …, animatedSkin: skin)
+    ///     map["batteryPercent"] = BatteryPercentSlot(animatedSkin: skin)
+    /// 本层不反向读设置（依赖单向铁律）；渲染端帧驱动见 StatusIconRenderer TODO
 
     public static func source(id: String) -> (any SlotSource)? {
         builtin[id]
