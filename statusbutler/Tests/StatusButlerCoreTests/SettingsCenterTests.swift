@@ -139,13 +139,10 @@ import Foundation
         #expect(optionIDs == Set(SlotRegistry.builtin.keys), "Picker 选项必须与注册表一屏对齐")
         for option in SettingsSlotOptions.all {
             #expect(!option.title.isEmpty)
-            let knownPending = ["netSpeed", "cpuUsage", "memoryPressure", "temperature", "weather"]
-            #expect(option.isPending == knownPending.contains(option.id))
+            // A14-γ 接线修订：netSpeed/cpuUsage/memoryPressure/temperature/weather 五占位
+            // 已换真源（PerfEngine 总线 / ThermalSlot / WeatherSlot），注册表不再有
+            // "待数据源"占位（plugin: 槽由启动扫描并入，同为已实现源）——占位断言随之移除
+            #expect(!option.isPending)
         }
-        // 已实现源排在占位源前面，保证首次打开默认选中的音量在可视区
-        let firstPending = SettingsSlotOptions.all.firstIndex(where: \.isPending)
-        let lastImplemented = SettingsSlotOptions.all.lastIndex(where: { !$0.isPending })
-        #expect(firstPending != nil && lastImplemented != nil)
-        #expect(firstPending! > lastImplemented!)
     }
 }
