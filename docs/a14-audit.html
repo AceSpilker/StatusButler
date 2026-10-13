@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A14 · 完成度审计 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:920px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:29px;line-height:1.3;margin-bottom:10px}
+  .lede{font-size:16px;color:var(--sub);margin-bottom:24px}
+  h2{font-size:20px;margin:40px 0 12px;padding-left:12px;border-left:4px solid var(--brand)}
+  p{margin:8px 0}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:7px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 9px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-green{background:#e5f6ec;color:var(--ok)}.b-orange{background:#fdf1e0;color:var(--warn)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:13px 17px;margin:14px 0;font-size:13.5px;border:1px solid}
+  .c-info{background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">A14 / Completion Audit</div>
+  <h1>完成度审计：需求规格 vs 实际代码</h1>
+  <p class="lede">2026-10-13 全库审计。方法：以 <a href="a2-features.html" target="_parent">A2</a>/A3~A12 需求规格为基准，逐项核对真实集成点（AppEnvironment 装配/消费方引用/用户可达路径），不采信看板徽标。<strong>结论：数据与引擎层覆盖约 90%，应用集成层约 50%；按"用户端到端可用"口径整体完成度约 60%。C1 的 35/35 是"任务交付口径"（每个任务完成了其定义的半场并附注），与需求全量口径存在系统性差距，本页即差距清单。</strong></p>
+
+  <h2>一、✅ 端到端完整可用（用户现在就能用）</h2>
+  <table>
+    <tr><th>功能</th><th>验证方式</th></tr>
+    <tr><td>三合一图标（真实电池/Wi-Fi/音量数据）· 菜单栏/Dock/双开 · 充电呼吸 · 墨水居中</td><td>build-app 启动即见；渲染/映射 515 用例族</td></tr>
+    <tr><td>信号槽系统：音量/时钟/电池%/磁盘 四源可切换（设置中心 Picker）</td><td>SlotRegistry + 设置持久化测试</td></tr>
+    <tr><td>弹层概览（分区卡片/防抖/蓝牙+温度旁路"可见才采样"）· 右键菜单 · 设置中心四分区 · 首启引导</td><td>左键/右键/设置/引导全链路已接 AppEnvironment</td></tr>
+    <tr><td><code>butler</code> CLI（status/--json/帮助/退出码）· <code>butler://volume/mute</code> URL（AppleScript 落点）</td><td>CLI 冒烟进 full-regression.sh</td></tr>
+    <tr><td>主题应用（6 预设经 ThemeApplier 生效）· 本地化框架（zh/en，引导已用）</td><td>测试钉死</td></tr>
+  </table>
+
+  <h2>二、🟡 引擎就绪、未接线（12 座"孤岛"，审计②检索=0 消费方）</h2>
+  <table>
+    <tr><th>引擎</th><th>现状</th><th>缺的接线（工作量估计）</th></tr>
+    <tr><td>温度/风扇读取 + 风扇曲线引擎</td><td>SMC 读/曲线/滞回/自愈全绿，真机实测过</td><td>温控面板数据接 thermal 已半接；<strong>风扇控制无 Helper 无 UI</strong>（T-026b，大）</td></tr>
+    <tr><td>性能采样器（CPU/内存/网速/GPU 无）</td><td>采样纯函数全绿</td><td>无采样循环、无弹层分区数据、netSpeed/cpuUsage 槽位仍占位（中）</td></tr>
+    <tr><td>小组件全链</td><td>快照/时间线/六族视图/appex 组装全绿</td><td><strong>主 App 从不写 widget-snapshot.json</strong>——组件永远显示空态；缺订阅者半场（中）</td></tr>
+    <tr><td>天气 Provider</td><td>三道闸+缓存全绿</td><td>无刷新调度、weather 槽位未注册（小）</td></tr>
+    <tr><td>历史库 + 体检引擎</td><td>SQLite 三表/四检查全绿</td><td>无落盘调用点、无体检 UI、启动 prune 未接（小-中）</td></tr>
+    <tr><td>熄屏/热键 + DDC 亮度</td><td>断言/守护/昼夜规则全绿</td><td>未挂动作中心 screen/off、无热键注册 UI、DDC 无面板（小-中）</td></tr>
+    <tr><td>蓝牙电量两源 + iDevice 解析器</td><td>合并规则/解析全绿</td><td>未并入蓝牙面板数据、helper C 源未写（T-023b/T-053b，中）</td></tr>
+    <tr><td>菜单栏整理引擎</td><td>规则/门控全绿（fail-visible）</td><td>图标级枚举器是 stub（协议注入点空着），Applier 未实现（中-大，私有路线）</td></tr>
+    <tr><td>脚本插件槽</td><td>沙盒引擎全绿</td><td>PluginDirectory 未注册进 SlotRegistry、无管理页（小-中）</td></tr>
+    <tr><td>遥测引擎</td><td>策略/心跳全绿（.invalid fail-safe）</td><td>TelemetryScheduler 未 start、无 consent UI（小）</td></tr>
+    <tr><td>Sparkle</td><td>框架已嵌入、UpdaterController 就绪</td><td>未 startUpdater、占位域/空公钥未换真值（上线时）</td></tr>
+    <tr><td>VPN/连接详情（ConnectionDetails）</td><td>NWPath 包装全绿</td><td>面板 VPN/受限徽标占位未点亮（小）</td></tr>
+  </table>
+
+  <h2>三、🔴 需求规格中有、代码完全没有的项</h2>
+  <table>
+    <tr><th>规格出处</th><th>缺失功能</th></tr>
+    <tr><td>A2·S2</td><td>Dock 图标点击弹弹层/开设置（reopen 行为）；单实例锁；开机自启动（SMAppService 有 1 处引用=风扇 Helper 设计注记，未实现登录项）</td></tr>
+    <tr><td>A2·S3/S4/S5</td><td>弹层下钻页（附近网络列表/链路详情/电池详情页功率·电压·循环）；音量滑杆只读不可调、滚动调音量未做</td></tr>
+    <tr><td>A2·S6</td><td>DDC 外接显示器<strong>音量</strong>（只做了亮度/对比度）；AirPods 聆听模式；音频输入监控</td></tr>
+    <tr><td>A2·S7</td><td>蓝牙设备连接/断开操作（只读列表都没有 UI——面板蓝牙分区读的是设备数组但无操作、电量未并入）</td></tr>
+    <tr><td>A2·S9/S11</td><td>设置：语言切换生效（占位）、分区排序 UI、主题导入导出文件 UI；Sparkle 检查更新按钮是禁用占位</td></tr>
+    <tr><td>A3·E8</td><td><strong>iCloud 设置同步完全未做</strong>（原计划并入 T-052，实际未交付）</td></tr>
+    <tr><td>A3·E9</td><td>App Shortcuts（AppIntent 注册）未做</td></tr>
+    <tr><td>A3·E2</td><td>动作中心面板 UI（引擎有了，弹层没有动作行）</td></tr>
+    <tr><td>A8·WX/CAL</td><td>天气/日程的弹层分区与槽位（槽位仅日租已接）</td></tr>
+  </table>
+
+  <h2>四、⛔ 外部依赖阻塞（代码侧已备好，等你的动作）</h2>
+  <table>
+    <tr><th>项</th><th>你要做什么</th></tr>
+    <tr><td>每 App 音量驱动（T-050b）</td><td>向 Apple 申请 DriverKit audio entitlement</td></tr>
+    <tr><td>iDevice 真机（T-053b）</td><td>iPhone 连 USB 验证 helper C 源（源还要写）</td></tr>
+    <tr><td>发布（T-056b）</td><td>Developer ID 账号 → 配 Secrets → release-draft publish 挡位</td></tr>
+    <tr><td>Sparkle 上线值</td><td>生成 EdDSA 密钥对，Info.plist 换真域名+公钥</td></tr>
+  </table>
+
+  <h2>五、审计结论与建议下一步</h2>
+  <div class="callout c-info">
+  <strong>一句话：骨架与引擎成色很足（515 用例是真金），但"最后一公里"集成层有一个系统性缺口——大量引擎停在孤岛状态，主 App 装配清单太薄（live() 只装配了 12 个对象，而全库有 24 个模块域）。</strong><br>
+  建议下一轮（可再并行 4 agent）：① 大接线轮——把 12 座孤岛按"小/中"项全部挂进 AppEnvironment 与面板/设置/动作中心（含小组件快照写入者，这是最影响观感的一处）；② 补做单实例锁+登录项+Dock 点击行为（App 壳完整性）；③ 弹层下钻三页 + 音量可调；④ E8 iCloud 与 App Shortcuts 二选一排期。四、⛔ 项等你账号/设备就绪后随时插入。
+  </div>
+  <p class="lede" style="margin-top:22px">— 本页由全库检索审计生成（方法可复跑：AppEnvironment.live 装配清单 + 引擎类跨模块引用计数 + 规格关键词反查）。返回 <a href="a0-catalog.html" target="_parent">A0 总目录</a> / <a href="c1-plan.html" target="_parent">C1 看板</a>。</p>
+</div>
+</body>
+</html>
