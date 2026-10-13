@@ -13,6 +13,67 @@ public protocol AutomationStore: Sendable {
     func setVolume(level: Int) -> ActionOutcome
     /// 静音切换——mute 动作的真实落点示例
     func toggleMute() -> ActionOutcome
+    /// 音量步进（T-210）：±delta 钳 0-100 后写入。实现侧注入 currentVolume +
+    /// writer 闭包（主线接 RoutedVolumeWriter）；协议默认实现是"未注入闭包"的
+    /// 诚实拒绝（AC-02），既有实现零改动即可编译，接线与否运行时自现
+    func stepVolume(delta: Int) -> ActionOutcome
+}
+
+extension AutomationStore {
+    public func stepVolume(delta: Int) -> ActionOutcome {
+        .rejected(reason: "音量步进未接线：缺少当前音量读/写闭包（集成半场注入 currentVolume + writer）")
+    }
+}
+
+// MARK: - 步进决策（纯函数）
+
+/// 音量步进的档位决策：current + delta 钳 0-100。纯函数钉死边界（100 上探/0 下探
+/// 都收敛在端点，不环绕、不拒绝），测试直钉矩阵
+public enum VolumeStepping {
+    /// volume/up、volume/down 的默认步幅（10 档：与面板滑杆 10 等分的体感一致）
+    public static let defaultStep = 10
+
+    public static func steppedLevel(current: Int, delta: Int) -> Int {
+        min(max(current + delta, 0), 100)
+    }
+}
+
+// MARK: - 闭包注入型步进实现
+
+/// stepVolume 的闭包注入实现（T-210）：组合根把"当前音量读闭包 + 档位写闭包"
+/// 喂进来即得完整 AutomationStore；setVolume/toggleMute 委托 base（通常是
+/// App 侧既有的 SystemStore），步进链路由本类型独占——主线三行接线：
+///
+///     SteppingVolumeStore(
+///         currentVolume: { routedWriter.readCurrentLevel() },
+///         writeLevel: { level in /* RoutedVolumeWriter.write 同步包装 */ },
+///         base: SystemStore())
+///
+public struct SteppingVolumeStore: AutomationStore {
+    public typealias VolumeReader = @Sendable () -> Int
+    public typealias VolumeWriter = @Sendable (Int) -> ActionOutcome
+
+    private let readCurrent: VolumeReader
+    private let writeLevel: VolumeWriter
+    private let base: any AutomationStore
+
+    public init(
+        currentVolume: @escaping VolumeReader,
+        writeLevel: @escaping VolumeWriter,
+        base: any AutomationStore
+    ) {
+        self.readCurrent = currentVolume
+        self.writeLevel = writeLevel
+        self.base = base
+    }
+
+    public func setVolume(level: Int) -> ActionOutcome { base.setVolume(level: level) }
+
+    public func toggleMute() -> ActionOutcome { base.toggleMute() }
+
+    public func stepVolume(delta: Int) -> ActionOutcome {
+        writeLevel(VolumeStepping.steppedLevel(current: readCurrent(), delta: delta))
+    }
 }
 
 /// 执行器绑定构建器
@@ -44,9 +105,10 @@ public enum AutomationGlue {
                 }
                 return store.setVolume(level: level)
             case "volume/up", "volume/down":
-                // TODO(T-052 集成半场): 步进需要"当前音量"读通道（VolumeMonitor 采样值或 CoreAudio 查询），
-                // AutomationStore 扩充 stepVolume(_ delta: Int) 后在此接线
-                return .rejected(reason: "音量步进待接线：\(command.verb) 需当前音量读通道（T-052 集成半场）")
+                // T-210：步进 ±defaultStep（钳制在 VolumeStepping.steppedLevel 内完成）；
+                // verb 不带参数（parse 白名单已拒 value），步幅由绑定层钉死不开放注入
+                let delta = command.verb == "volume/up" ? VolumeStepping.defaultStep : -VolumeStepping.defaultStep
+                return store.stepVolume(delta: delta)
             default:
                 return .rejected(reason: "volume 动词不匹配：\(command.verb)")
             }
