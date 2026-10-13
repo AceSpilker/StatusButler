@@ -155,7 +155,17 @@ public final class AppEnvironment {
             localization: Localization(language: settings.appLanguage)
         )
         let appIconController = AppIconController(store: store, settings: settings)
-        let automation = AutomationCoordinator()
+        let routed = RoutedVolumeWriter(
+            ddc: DDCClient(),
+            routeDecision: RoutedVolumeWriter.liveRoute(),
+            currentVolume: { Int(0) }
+        )
+        let stepping = SteppingVolumeStore(
+            currentVolume: { routed.readCurrentLevelSync() },
+            writeLevel: { level in routed.writeSync(level: level) },
+            base: AutomationCoordinator.SystemStore()
+        )
+        let automation = AutomationCoordinator(stepping: stepping)
         let services = LiveServices(settings: settings, store: store, automation: automation)
         let popover = StatusPopoverController(viewModel: services.panelViewModel)
         let settingsWindow = SettingsWindowController(settings: settings)

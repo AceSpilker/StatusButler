@@ -30,12 +30,35 @@ public final class LiveServices {
     ]
     private static let perfSlots: Set<String> = ["netSpeed", "cpuUsage", "memoryPressure"]
 
+    // P1 接线属性
+    private let routedWriter = RoutedVolumeWriter(
+        ddc: DDCClient(),
+        routeDecision: RoutedVolumeWriter.liveRoute(),
+        currentVolume: { 50 }  // 占位：初值兜底，真实读经 DDC/CoreAudio 路由感知
+    )
+    private let perfBus = PerfEngine.shared.bus
+    private let inputBox = LockedBox<AudioInputStatus?>(nil)
+    private let mobileBox = LockedBox<MobileBatterySummary?>(nil)
+    private var cityCancellables: Set<AnyCancellable> = []
+
     public init(settings: SettingsStore, store: SystemStatusStore, automation: AutomationCoordinator) {
         self.settings = settings
         self.automation = automation
 
-        // γ：天气 30 分钟节拍（无城市配置时 tick 短路——诚实静默）
-        weatherFeed = WeatherFeed()
+        // γ+ζ(T-201)：城市配置驱动定位；nil → tick 短路（诚实静默）
+        let cityBox = LockedBox<String?>(settings.weatherCity)
+        settings.$weatherCity
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { (city: String?) in cityBox.value = city }
+            .store(in: &cityCancellables)
+        weatherFeed = WeatherFeed(
+            location: { [cityBox] in
+                guard let city = cityBox.value,
+                      let match = WeatherCityCatalog.city(named: city) else { return nil }
+                return (match.latitude, match.longitude)
+            }
+        )
         // γ：小组件快照写入者（审计最痛点）
         widgetFeed = WidgetFeedCoordinator(
             store: store,
@@ -52,7 +75,7 @@ public final class LiveServices {
             wifiScanner: SystemWiFiScanner(),
             interfaceAddresses: SystemInterfaceAddressReader(),
             batteryDetails: IORegistryBatteryReader(),
-            volumeWriter: AppleScriptVolumeWriter(),
+            volumeWriter: routedWriter,
             naturalScrolling: settings.naturalVolumeScrolling,
             bluetoothOperator: IOBluetoothOperator(),
             bluetoothBattery: SystemBluetoothBatterySource(),
@@ -64,7 +87,11 @@ public final class LiveServices {
             calendarProvider: { [calendarText] in calendarText.value },
             healthReportProvider: { [healthReport] in healthReport.value },
             slotCycler: SettingsSlotCycler(settings: settings),
-            openExternal: { NSWorkspace.shared.open($0) }
+            openExternal: { NSWorkspace.shared.open($0) },
+            perfProvider: { [perfBus] in perfBus.sample },
+            cpuTopologyProvider: { CpuCoreTopology.readLive() },
+            audioInputProvider: { [inputBox] in inputBox.value },
+            mobileBatteryProvider: { [mobileBox] in mobileBox.value }
         )
     }
 
@@ -101,6 +128,38 @@ public final class LiveServices {
                     for slot in Self.perfSlots { await self.perf.stop("slot:\(slot)") }
                     if Self.perfSlots.contains(id) { await self.perf.start("slot:\(id)") }
                 }
+            }
+            .store(in: &cancellables)
+
+        // ζ(T-206)：热键整组重注册（赋值变更 → 注销全部 → 逐项注册）
+        let hotKeys = HotKeyCenter()
+        settings.$hotKeyAssignments
+            .dropFirst()
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { assignments in
+                hotKeys.unregisterAll()
+                for (index, entry) in assignments.enumerated() {
+                    _ = hotKeys.register(
+                        id: UInt32(index + 1),
+                        combo: entry.value,
+                        action: { [weak self, automation = self.automation] in
+                            if let action = ActionRegistry.builtin.first(where: { $0.id == entry.key }) {
+                                _ = automation.performAction(action)
+                            }
+                        }
+                    )
+                }
+            }
+            .store(in: &cancellables)
+
+        // ζ(T-209)：分区布局变更热应用
+        settings.$panelLayout
+            .dropFirst()
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] layout in
+                self?.panelViewModel.apply(layout: layout)
             }
             .store(in: &cancellables)
 
@@ -160,6 +219,13 @@ public final class LiveServices {
                 calendarText.value = EventTimeline.countdownText(next: next, now: Date())
             }
         }
+        // 音频输入（T-204：读一次快照，面板行显示）
+        inputBox.value = await AudioInputMonitor().read()
+
+        // iDevice（T-205：helper 缺失 → nil → 引导文案三态）
+        let reading = await MobileBatteryHelperReader().read()
+        mobileBox.value = MobileBatterySummary(reading: reading)
+
         // 体检：四检查并发
         let auditor = HealthAuditor(checks: [
             FileVaultCheck(), GatekeeperCheck(), FirewallCheck(), SoftwareUpdateCheck(),

@@ -6,7 +6,7 @@ public final class AutomationCoordinator: @unchecked Sendable {
     public let router = ButlerURLRouter()
     private let center: ActionCenter
 
-    private struct SystemStore: AutomationStore {
+    struct SystemStore: AutomationStore {
         func setVolume(level: Int) -> ActionOutcome {
             let clamped = min(max(level, 0), 100)
             let script = NSAppleScript(source: "set volume output volume \(clamped)")
@@ -23,8 +23,9 @@ public final class AutomationCoordinator: @unchecked Sendable {
         }
     }
 
-    public init() {
-        let bindings = AutomationGlue.executorBindings(store: SystemStore())
+    public init(stepping: SteppingVolumeStore? = nil) {
+        let store: any AutomationStore = stepping ?? SystemStore()
+        let bindings = AutomationGlue.executorBindings(store: store)
         center = ActionCenter(executor: { action, command in
             bindings[action.id]?(command) ?? .rejected(reason: "动作未注册：\(action.id)")
         })

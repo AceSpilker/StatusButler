@@ -231,3 +231,13 @@ final class DegradeCounter: @unchecked Sendable {
 
     var value: Int { lock.withLock { count } }
 }
+
+extension RoutedVolumeWriter {
+    /// AutomationGlue 同步闭包桥：系统路由 AppleScript 同步；DDC 路由拒绝（异步路径，步进暂走系统）
+    public func readCurrentLevelSync() -> Int { readCurrentLevel() }
+    public func writeSync(level: Int) -> ActionOutcome {
+        let clamped = min(max(level, 0), 100)
+        let script = NSAppleScript(source: "set volume output volume \(clamped)")
+        return script?.executeAndReturnError(nil) == nil ? .performed : .rejected(reason: "AppleScript 失败")
+    }
+}
