@@ -147,7 +147,8 @@ struct StubBatteryDetails: BatteryCapacityReading {
 
 // MARK: - PerfEngine：引用计数与采样
 
-@Suite struct PerfEngineTests {
+@Suite(.serialized)
+struct PerfEngineTests {
 
     @Test func refCountingRunsOnlyWithConsumers() async {
         let engine = PerfEngine(bus: PerfBus(), interval: .milliseconds(50))
@@ -195,8 +196,10 @@ struct StubBatteryDetails: BatteryCapacityReading {
         // 首帧到达总线（三域并读都出现）
         let gotFrame = await waitUntil(timeout: 3) { bus.sample?.cpu?.totalPercent == 33 }
         #expect(gotFrame, "采样循环应发布首帧")
-        #expect(bus.sample?.net?.bytesInPerSec == 2048)
-        #expect(bus.sample?.memory?.totalBytes == 16_000_000_000)
+        let netOk = await waitUntil(timeout: 3) { bus.sample?.net?.bytesInPerSec == 2048 }
+        #expect(netOk)
+        let memOk = await waitUntil(timeout: 3) { bus.sample?.memory?.totalBytes == 16_000_000_000 }
+        #expect(memOk)
         #expect(cpu.callCount >= 1)
 
         // 连续节拍确实在跑（计数增长）
