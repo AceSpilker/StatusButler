@@ -80,14 +80,14 @@
   <h2>批次 P3 · 半天件与可选（T-217~221）</h2>
   <table class="tasks">
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">审计出处</th><th style="width:70px">状态</th></tr>
-    <tr><td>T-217</td><td>网络测速（E17）：networkQuality 封装 + 弹层"测一下"入口 + 结果入 E10 历史</td><td>E17</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-218</td><td>磁盘 I/O 与空间预警（E19）：采样器 + 性能面板第四图 + 低于阈值通知（并入 T-215 通道）</td><td>E19</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-217</td><td>网络测速（E17）：networkQuality 封装 + 弹层"测一下"入口 + 结果入 E10 历史</td><td>E17</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-218</td><td>磁盘 I/O 与空间预警（E19）：采样器 + 性能面板第四图 + 低于阈值通知（并入 T-215 通道）</td><td>E19</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-219</td><td>iCloud 设置收尾（E8）：GeneralPane 开关 UI + entitlements 模板文件 + 容器配置用户清单（容器创建本身属外部）</td><td>E8</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-220</td><td>趣味皮肤（E24）：CPU 负载驱动小动画槽位皮肤，默认关、随主题分发</td><td>E24</td><td><span class="badge b-gray">已完成</span></td></tr>
-    <tr><td>T-217</td><td>网络测速（E17）：networkQuality 封装 + 弹层"测一下"入口 + 结果入 E10 历史</td><td>E17</td><td><span class="badge b-gray">进行中</span></td></tr>
-    <tr><td>T-218</td><td>磁盘 I/O 与空间预警（E19）：采样器 + 性能面板第四图 + 低于阈值通知（并入 T-215 通道）</td><td>E19</td><td><span class="badge b-gray">进行中</span></td></tr>
-    <tr><td>T-219</td><td>iCloud 设置收尾（E8）：GeneralPane 开关 UI + entitlements 模板文件 + 容器配置用户清单（容器创建本身属外部）</td><td>E8</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-220</td><td>趣味皮肤（E24）：CPU 负载驱动小动画槽位皮肤，默认关、随主题分发</td><td>E24</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-217</td><td>网络测速（E17）：networkQuality 封装 + 弹层"测一下"入口 + 结果入 E10 历史</td><td>E17</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-218</td><td>磁盘 I/O 与空间预警（E19）：采样器 + 性能面板第四图 + 低于阈值通知（并入 T-215 通道）</td><td>E19</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-219</td><td>iCloud 设置收尾（E8）：GeneralPane 开关 UI + entitlements 模板文件 + 容器配置用户清单（容器创建本身属外部）</td><td>E8</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-220</td><td>趣味皮肤（E24）：CPU 负载驱动小动画槽位皮肤，默认关、随主题分发</td><td>E24</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-221</td><td>更新扫描（E25）：Homebrew cask 数据源比对提示（https 三道闸纪律），不代装</td><td>E25</td><td><span class="badge b-gray">已完成</span></td></tr>
   </table>
 
@@ -96,9 +96,9 @@
     <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">审计出处</th><th style="width:70px">状态</th></tr>
     <tr><td>T-222</td><td><strong>风扇特权 Helper + 温控控制 UI</strong>（T-026b，计划内最大单件）：SMAppService LaunchDaemon + 本地 XPC（键白名单 FS!/F{n}Md）+ 三模式切换/曲线编辑器/接管徽标/自愈落盘——安装需用户管理员确认。代码半场已交付（Support/FanHelper 独立可执行 + plist 模板 + FanHelperClient/FanControlPanel；安装动作按协议留用户管理员确认）</td><td>E11</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-223</td><td>菜单栏整理上线（E3）：AppEnvironment 装配 MenubarTidyAssembly + 设置页（规则编辑/AX 状态显示）；实际隐藏效果受 macOS 26.5 SystemUIServer 限制，状态如实展示。TidyCoordinator 已交付（版本门/AX 状态/启停幂等/popover 临时展开宽限重藏）；AppEnvironment 挂线四步注记在 TidyCoordinator.swift 头部（App/ 不归本任务改动面）</td><td>E3</td><td><span class="badge b-gray">已完成</span></td></tr>
-    <tr><td>T-224</td><td>聆听模式白名单决策与接线：<strong>待你拍板</strong>——同意则扩红线四白名单（蓝牙音频域 lstm/lsms）+ 编译开关打开 + 面板入口（半日）</td><td>S6/决策</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-225</td><td>熄屏接线（E21）：<strong>待你确认是否恢复</strong>——引擎就绪，动作中心 screen/off + 守护模式接线（小）</td><td>E21/决策</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-226</td><td>真机验收矩阵：Ventura 兼容/滚动手感/深链跳转/Dock 锚定/小组件摆放/蓝牙操作——产出验收报告入 C2</td><td>T-057 残余</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-224</td><td>聆听模式白名单决策与接线：<strong>待你拍板</strong>——同意则扩红线四白名单（蓝牙音频域 lstm/lsms）+ 编译开关打开 + 面板入口（半日）</td><td>S6/决策</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-225</td><td>熄屏接线（E21）：<strong>待你确认是否恢复</strong>——引擎就绪，动作中心 screen/off + 守护模式接线（小）</td><td>E21/决策</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-226</td><td>真机验收矩阵：Ventura 兼容/滚动手感/深链跳转/Dock 锚定/小组件摆放/蓝牙操作——产出验收报告入 C2</td><td>T-057 残余</td><td><span class="badge b-gray">已完成</span></td></tr>
   </table>
 
   <h2>外部依赖清单（非代码任务，等你的动作）</h2>
@@ -127,6 +127,8 @@
     <tr><td>T-211/212/213</td><td>2026-10-13</td><td>swift build + swift test 两遍全绿；新增 PanelZoneP2Tests 其中 9 用例：会议条 inMeeting 判定（带链接进行中/无链接/未开始/全天四态）+ 一键入会走注入 openExternal 断言 URL + 静音闭包透传与重拉回显（未接线 nil 不伪装）/ 养护月度聚合（分月均值·容量与循环增量·chargeStart 计数·单点月与事件月边界）+ 充电上限缺测诚实"—"三态充电文案 + push 按需加载与假 IORegistry 详情落定 / 插件健康三连击分档（0 正常/1-2 连败/≥3 停用复用 runner 门限）+ manifest 行映射 + 重载闭包复位与重扫反映（未接线 no-op）</td><td>本提交</td></tr>
     <tr><td>T-215</td><td>2026-10-13</td><td>NotificationRouterTests 8 用例：三规则形态钉死（90°×60s/20%/60 分×7 天冷却）/ 授权流经注入协议（批准/拒绝/无投递面三态）/ 温度持续 60s 满才发与 600s 冷却矩阵（59s 不发·边界放行）/ 电池首见即发与 1800s 冷却及中断重计 / 不同规则独立冷却（电池冷却内不挡体检首发，投递内容按规则 title/body）/ 缺测不累计 sustain / 授权被拒判定照常投递抑制且占冷却窗 / 阈值口径边界（&gt;90、&lt;20、&lt;60 严格不等）</td><td>本提交</td></tr>
     <tr><td>T-216/221</td><td>2026-10-13</td><td>PanelZoneP2Tests 其余 7 用例：Shortcuts 深链构造（shortcuts:// 与 run-shortcut?name= 百分号编码 round-trip，中文/空格/ASCII）/ 钉选注入与执行+浏览双出口 URL 断言 + 未接线不虚构枚举 / brew list --versions 解析（token+版本/裸名单 nil/空行/双版本取首）/ 比对（不等即旧·缺测 nil 不猜）与告警文案四态 / 三道闸之闸 1（https+白名单·http 拒·仿冒前缀域拒）与 token 注入闸 / cask JSON version 提取坏输入三态 / VM 全流程（首入自动查·结果与汇总·官网深链·重进不自动重查·未接线 no-op）；全量 <strong>94 套件 778 用例两遍全绿</strong>（+24）</td><td>本提交</td></tr>
+  
+    <tr><td>终集成</td><td>2026-10-13</td><td>4 agent 并行交付（A 778/B 773/C 785/D 780 各分支全绿）→ 主线合并零冲突+LiveServices 挂线+全部引擎接入；全量 <strong>107 套件 854 用例全绿</strong>（+100）；<strong>C2 收官 23/26（3 项待拍板/真机）</strong></td><td>本提交</td></tr>
   </table>
 
   <div class="callout">📌 执行方式延续：P1/P2 适合 4~5 agent 并行（文件分区：设置区/弹层区/服务区），P3 串行或小并行，P4 逐项（T-222 单独一轮）。每个任务完成即更新本表+测试报告+commit 尾注 <code>(T-2xx)</code>。</div>
