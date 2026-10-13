@@ -111,7 +111,7 @@ public final class ExternalBrightnessController: ObservableObject {
         ) { [weak self] _, _ in
             MainActor.assumeIsolated {
                 // 触发=外观变化；目标值由规则按当前小时求值（引擎头注释的口径分工）
-                Task { @MainActor in await self?.dimmer.reevaluate(rule: ExternalBrightnessDefaults.rule) }
+                Task { @MainActor [weak self] in await self?.dimmer.reevaluate(rule: ExternalBrightnessDefaults.rule) }
             }
         }
     }
