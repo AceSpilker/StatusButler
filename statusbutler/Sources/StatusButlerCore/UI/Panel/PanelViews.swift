@@ -476,6 +476,72 @@ private struct BluetoothDeviceRow: View {
     }
 }
 
+// MARK: - 顶部会议条（T-211：进行中会议 + 一键入会 + 会议中静音）
+
+/// 弹层顶部会议条（MTG-02）。MTG-03 隐私：只显"会议中"与剩余时长，不显事件标题
+struct MeetingBarView: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "person.2.fill")
+                .foregroundStyle(.green)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("会议中").font(calloutWeight)
+                Text("剩余 \(viewModel.meetingBar?.remainingText ?? "—")")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            Button {
+                viewModel.joinCurrentMeeting()
+            } label: {
+                Label("入会", systemImage: "arrow.up.forward.app")
+                    .font(.callout)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.blue.opacity(0.18)))
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            if viewModel.isMeetingMuteActionAvailable {
+                Button {
+                    _ = viewModel.toggleMeetingMute()
+                } label: {
+                    Text(muteLabel)
+                        .font(.callout)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule().fill(
+                                viewModel.meetingBar?.isInputMuted == true
+                                    ? Color.orange.opacity(0.28)
+                                    : Color.secondary.opacity(0.2)
+                            )
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.green.opacity(0.10))
+        )
+    }
+
+    private var calloutWeight: Font {
+        .callout.weight(.medium)
+    }
+
+    private var muteLabel: String {
+        viewModel.meetingBar?.isInputMuted == true ? "取消静音" : "静音麦克风"
+    }
+}
+
 // MARK: - 顶部动作行（A3·E2 动作中心面板行）
 
 struct ActionStripView: View {
@@ -494,10 +560,69 @@ struct ActionStripView: View {
                         _ = viewModel.perform(action)
                     }
                 }
+                // T-216：钉选入口在动作行尾部——浏览跳 Shortcuts App 本体
+                // （macOS 无枚举 API，诚实降级；名单 provider 未接线不出现）
+                if viewModel.isShortcutsEntryVisible {
+                    shortcutsButton
+                }
             }
             .padding(.vertical, 2)
         }
         .frame(height: 46)
+    }
+
+    private var shortcutsButton: some View {
+        Button {
+            viewModel.openShortcutsApp()
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: "keyboard.badge.ellipsis").font(.callout)
+                Text("Shortcuts…").font(.caption2)
+            }
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.secondary.opacity(0.14))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("打开快捷指令 App")
+    }
+}
+
+// MARK: - Shortcuts 钉选区（T-216：登记过的快捷指令，点按执行）
+
+struct PinnedShortcutsRow: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(viewModel.pinnedShortcuts) { pin in
+                    Button {
+                        viewModel.runShortcut(pin)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "wand.and.stars")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(pin.name).font(.callout)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                .fill(.quaternary.opacity(0.35))
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.vertical, 2)
+        }
     }
 }
 
@@ -748,6 +873,105 @@ struct HistoryEntryRowView: View {
     }
 }
 
+// MARK: - 下钻入口行三件（T-212 养护 / T-213 插件 / T-221 更新扫描）
+
+/// 通用入口行骨架：图标 + 标题 + 副标题 + chevron（与历史入口行同族样式）
+private struct DrillEntryRow: View {
+    let symbolName: String
+    let title: String
+    let subtitle: String
+    let valueText: String?
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 10) {
+                Image(systemName: symbolName)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 8)
+                if let valueText {
+                    Text(valueText)
+                        .font(.title3)
+                        .monospacedDigit()
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.quaternary.opacity(0.35))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// 电池养护入口（T-212）：右缘给最新月容量均值做快速读数
+struct BatteryCareEntryRowView: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        DrillEntryRow(
+            symbolName: PanelRoute.batteryCare.symbolName,
+            title: "电池养护",
+            subtitle: "充电上限 · 优化充电 · 月度小结",
+            valueText: viewModel.careMonthly.last?.averageCapacityPercent.map { "\($0)%" },
+            onTap: { viewModel.push(.batteryCare) }
+        )
+    }
+}
+
+/// 插件管理入口（T-213）：右缘给已停用数（有停用才提示，健康时不占眼）
+struct PluginEntryRowView: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    private var stoppedCount: Int {
+        viewModel.pluginRows.filter { $0.health == .stopped }.count
+    }
+
+    var body: some View {
+        DrillEntryRow(
+            symbolName: PanelRoute.plugins.symbolName,
+            title: "插件管理",
+            subtitle: "扫描列表 · 启停/重载 · 三连击复位",
+            valueText: stoppedCount > 0 ? "\(stoppedCount) 停用" : nil,
+            onTap: { viewModel.push(.plugins) }
+        )
+    }
+}
+
+/// 更新扫描入口（T-221）：右缘给最近一次扫描的可更新数
+struct UpdateScanEntryRowView: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        DrillEntryRow(
+            symbolName: PanelRoute.updateScan.symbolName,
+            title: "检查 App 更新",
+            subtitle: "Homebrew cask 比对 · 纯提示不代装",
+            valueText: outdatedText,
+            onTap: { viewModel.push(.updateScan) }
+        )
+    }
+
+    private var outdatedText: String? {
+        guard !viewModel.updateResults.isEmpty else { return nil }
+        let count = viewModel.updateResults.filter { $0.isOutdated == true }.count
+        return count > 0 ? "\(count) 可更新" : "最新"
+    }
+}
+
 // MARK: - footer 槽位行（A14-β：当前槽位 + 点击循环）
 
 struct SlotFooterView: View {
@@ -810,8 +1034,16 @@ public struct StatusPanelRootView: View {
 
     private var overview: some View {
         VStack(spacing: 8) {
+            // 会议条置顶（MTG-02"弹层顶部出现会议条"；无进行中会议整条隐藏）
+            if viewModel.showsMeetingBar {
+                MeetingBarView(viewModel: viewModel)
+            }
             if !viewModel.actions.isEmpty {
                 ActionStripView(viewModel: viewModel)
+            }
+            // Shortcuts 钉选区在动作行下方（名单非空才占行高）
+            if !viewModel.pinnedShortcuts.isEmpty {
+                PinnedShortcutsRow(viewModel: viewModel)
             }
             ForEach(viewModel.sectionsToRender, id: \.self) { section in
                 row(for: section)
@@ -824,6 +1056,15 @@ public struct StatusPanelRootView: View {
             }
             if viewModel.showsHistoryEntryRow {
                 HistoryEntryRowView(viewModel: viewModel)
+            }
+            if viewModel.showsBatteryCareEntryRow {
+                BatteryCareEntryRowView(viewModel: viewModel)
+            }
+            if viewModel.showsUpdateScanEntryRow {
+                UpdateScanEntryRowView(viewModel: viewModel)
+            }
+            if viewModel.showsPluginEntryRow {
+                PluginEntryRowView(viewModel: viewModel)
             }
             if viewModel.showsHealthRow {
                 HealthEntryRowView(viewModel: viewModel)

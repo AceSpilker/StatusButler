@@ -97,10 +97,27 @@ public final class PanelViewModel: ObservableObject {
     /// 最近一次 CSV 导出结果（导出按钮的诚实反馈；nil = 本次会话未导出过）
     @Published public private(set) var lastHistoryExportSucceeded: Bool?
 
+    // MARK: C2 P2/P3 新增状态（T-211 会议条 / T-212 养护页 / T-213 插件管理 /
+    // T-216 Shortcuts 钉选 / T-221 更新扫描）
+
+    /// 会议条（nil = 无进行中会议，整条隐藏；可见期旁路轮询维持剩余时长新鲜）
+    @Published public private(set) var meetingBar: MeetingBarState?
+    /// 养护页数据（进入下钻页才读，按需数据）
+    @Published public private(set) var careDaily: [CareDailyPoint] = []
+    @Published public private(set) var careMonthly: [CareMonthlySummary] = []
+    /// 插件管理页列表（进入下钻页才扫，按需数据）
+    @Published public private(set) var pluginRows: [PluginRowState] = []
+    /// Shortcuts 钉选名单（出现瞬间拉一次；名单是设置登记的静态表，不轮询）
+    @Published public private(set) var pinnedShortcuts: [ShortcutPin] = []
+    /// 更新扫描结果（用户点"检查"才发请求——能效纪律；空表 ≠ 已扫描，见 isUpdateScanning）
+    @Published public private(set) var updateResults: [CaskUpdate] = []
+    @Published public private(set) var updateScanSummary: String?
+    @Published public private(set) var isUpdateScanning = false
+
     /// 旁路采样启停标志（测试与接线方可观测；不可见恒为 false）
     public var isBypassSamplingActive: Bool {
         bluetoothPollTask != nil || thermalPollTask != nil || connectionPollTask != nil
-            || perfPollTask != nil
+            || perfPollTask != nil || meetingPollTask != nil
     }
 
     /// 实际要渲染的分区：order ∩ visibleSections，保持 order 的排列
@@ -140,6 +157,23 @@ public final class PanelViewModel: ObservableObject {
     public var showsHistoryEntryRow: Bool { historyReader != nil }
     /// CSV 导出是否接线（未接线按钮隐藏）
     public var isHistoryExportAvailable: Bool { historyExportClosure != nil }
+
+    // MARK: C2 P2/P3 计算面（T-211/212/213/216/221）
+
+    /// 会议条可见性（无进行中会议即隐藏；provider 未接线恒隐藏）
+    public var showsMeetingBar: Bool { meetingBar != nil }
+    /// 会议中静音动作可点（静音闭包接线且本轮有静音态读数）
+    public var isMeetingMuteActionAvailable: Bool {
+        meetingMuteToggler != nil && meetingBar?.isInputMuted != nil
+    }
+    /// 养护页入口（月度小结读服务未接线不给入口；总览行可单独降级）
+    public var showsBatteryCareEntryRow: Bool { batteryCareReader != nil }
+    /// 插件管理入口（列表 provider 未接线不给入口）
+    public var showsPluginEntryRow: Bool { pluginListProvider != nil }
+    /// Shortcuts 入口（名单 provider 未接线不给入口——钉选区与"Shortcuts…"按钮同闸）
+    public var isShortcutsEntryVisible: Bool { shortcutsListProvider != nil }
+    /// 更新扫描入口（本地清单与远端版本源缺一不可——单边接线点了也是空页）
+    public var showsUpdateScanEntryRow: Bool { brewListProvider != nil && caskVersionFetcher != nil }
     /// 历史页最近加载条数上限（UI 列表上限；DB 全量导出走 CSV）
     public static let historyEventLimit = 200
     /// 筛选后的事件行（新在前——recentEvents 升序取尾，展示倒序）
@@ -193,12 +227,35 @@ public final class PanelViewModel: ObservableObject {
     private let historyReader: (any HistoryReading)?
     private let historyExportClosure: HistoryExportClosure?
 
+    // MARK: C2 P2/P3 注入（T-211/212/213/216/221；全部可选，缺省诚实降级）
+
+    /// 会议条：主线喂 `{ MeetingBarMapping.state(from: timeline, now: Date(), isInputMuted: mute?.isInputMuted) }`
+    /// （时间轴与静音态的新鲜度归主线缓存；本 VM 只在弹层可见期轮询闭包）
+    private let meetingBarProvider: MeetingBarStateProvider?
+    /// 会议中静音（T-041b MuteControlling 的包装：`{ try? controller.toggleMute(now: Date()) ?? nil }`）
+    private let meetingMuteToggler: MeetingMuteToggler?
+    /// 养护页月度小结：主线喂 HistoryDatabase（BatteryCareReading retroactive 适配已就位）
+    private let batteryCareReader: (any BatteryCareReading)?
+    /// 插件列表：主线喂 `{ PluginPanelMapping.rows(from: PluginDirectory.scan(root: PluginDirectory.defaultRoot())) { runner.failureCount(pluginID: $0) } }`
+    private let pluginListProvider: PluginListProvider?
+    /// 插件重载：主线喂 `{ runner.reset(pluginID: $0) }`（复位计数即恢复启用）
+    private let pluginReloadAction: PluginReloadAction?
+    /// Shortcuts 钉选名单（设置登记表；macOS 无公开枚举 API，见 ShortcutsPanelSupport 头注）
+    private let shortcutsListProvider: ShortcutsListProvider?
+    /// brew 本地清单原文：主线喂 `{ await BrewListRunner.readOutput() ?? "" }` 的同步缓存
+    /// （BrewListRunner 是子进程往返，不做同步闭包——主线预取缓存后 provider 读缓存）
+    private let brewListProvider: (@Sendable () -> String)?
+    /// Homebrew 版本源：主线喂 HomebrewCaskFetcher()（三道闸在 fetcher 内，占位实现）
+    private let caskVersionFetcher: (any CaskVersionFetching)?
+
     private var scanTask: Task<Void, Never>?
     private var batteryDetailTask: Task<Void, Never>?
     private var pendingVolumeWriteTask: Task<Void, Never>?
     private var lastVolumeWriteAt: Date?
     private var hidConfirm = HIDConfirmModel()
     private var perfPollTask: Task<Void, Never>?
+    private var meetingPollTask: Task<Void, Never>?
+    private var updateScanTask: Task<Void, Never>?
 
     /// 动作中心面板行数据（注入的表原样透出；空表 = 顶部动作行隐藏）
     public var actions: [ButlerAction] { actionsValue }
@@ -232,7 +289,15 @@ public final class PanelViewModel: ObservableObject {
         audioInputProvider: AudioInputStatusProvider? = nil,
         mobileBatteryProvider: MobileBatterySummaryProvider? = nil,
         historyReader: (any HistoryReading)? = nil,
-        historyExport: HistoryExportClosure? = nil
+        historyExport: HistoryExportClosure? = nil,
+        meetingBarProvider: MeetingBarStateProvider? = nil,
+        meetingMuteToggler: MeetingMuteToggler? = nil,
+        batteryCareReader: (any BatteryCareReading)? = nil,
+        pluginListProvider: PluginListProvider? = nil,
+        pluginReloadAction: PluginReloadAction? = nil,
+        shortcutsListProvider: ShortcutsListProvider? = nil,
+        brewListProvider: (@Sendable () -> String)? = nil,
+        caskVersionFetcher: (any CaskVersionFetching)? = nil
     ) {
         self.store = store
         self.bluetooth = bluetooth
@@ -266,6 +331,14 @@ public final class PanelViewModel: ObservableObject {
         self.mobileBatteryProvider = mobileBatteryProvider
         self.historyReader = historyReader
         self.historyExportClosure = historyExport
+        self.meetingBarProvider = meetingBarProvider
+        self.meetingMuteToggler = meetingMuteToggler
+        self.batteryCareReader = batteryCareReader
+        self.pluginListProvider = pluginListProvider
+        self.pluginReloadAction = pluginReloadAction
+        self.shortcutsListProvider = shortcutsListProvider
+        self.brewListProvider = brewListProvider
+        self.caskVersionFetcher = caskVersionFetcher
         bind()
     }
 
@@ -275,9 +348,11 @@ public final class PanelViewModel: ObservableObject {
         thermalPollTask?.cancel()
         connectionPollTask?.cancel()
         perfPollTask?.cancel()
+        meetingPollTask?.cancel()
         scanTask?.cancel()
         batteryDetailTask?.cancel()
         pendingVolumeWriteTask?.cancel()
+        updateScanTask?.cancel()
     }
 
     // MARK: - 生命周期钩子（SwiftUI onAppear/onDisappear 接这里）
@@ -306,6 +381,10 @@ public final class PanelViewModel: ObservableObject {
         hidArmedAddress = nil
         // 历史筛选随导航栈复位（transient 弹层重开不该记住上次的筛选）
         historyEventFilter = nil
+        // 更新扫描是用户触发的网络往返，弹层关闭即取消；已得结果保留（重开可看）
+        updateScanTask?.cancel()
+        updateScanTask = nil
+        isUpdateScanning = false
     }
 
     /// 更新分区布局（设置页显隐勾选/拖动排序接入用）；非法布局原样拒绝，不半途应用
@@ -330,6 +409,15 @@ public final class PanelViewModel: ObservableObject {
             refreshHealthReport()
         case .history:
             refreshHistory()
+        case .batteryCare:
+            // 总览行复用电池详情读取；月度小结走养护读协议
+            refreshBatteryDetails()
+            refreshBatteryCare()
+        case .plugins:
+            refreshPluginRows()
+        case .updateScan:
+            // 首次进入自动查一轮（与附近网络页同口径：打开即意图，重进不自动重查）
+            if updateResults.isEmpty && updateScanTask == nil { checkForUpdates() }
         }
     }
 
@@ -520,6 +608,10 @@ public final class PanelViewModel: ObservableObject {
         if let mobileBatteryProvider {
             mobileBatterySummary = mobileBatteryProvider()
         }
+        // T-216：钉选名单是设置登记的静态表，出现瞬间拉一次即可（不轮询）
+        if let shortcutsListProvider {
+            pinnedShortcuts = shortcutsListProvider()
+        }
     }
 
     public func refreshHealthReport() {
@@ -636,6 +728,22 @@ public final class PanelViewModel: ObservableObject {
                 }
             }
         }
+        // 会议条（T-211）：剩余时长/入会窗口随钟点变化，provider 轻量（读缓存），
+        // 与旁路轮询同节奏维持新鲜；时间轴取数归主线（MeetingBarStateProvider 注记）
+        if meetingBarProvider != nil {
+            meetingPollTask = Task { [weak self] in
+                while !Task.isCancelled {
+                    if let self {
+                        self.refreshMeetingBar()
+                    }
+                    guard let self, !Task.isCancelled else { return }
+                    try? await Task.sleep(
+                        for: self.bypassPollInterval,
+                        tolerance: self.bypassPollInterval / 5
+                    )
+                }
+            }
+        }
     }
 
     /// 性能旁路单次拉取（轮询循环本体；相等帧不重发布——订阅去重铁律在源头兑现）
@@ -656,6 +764,8 @@ public final class PanelViewModel: ObservableObject {
         connectionPollTask = nil
         perfPollTask?.cancel()
         perfPollTask = nil
+        meetingPollTask?.cancel()
+        meetingPollTask = nil
     }
 
     // MARK: - 历史查看页（T-207：按需数据，进入页面才读一次，绝不轮询）
@@ -688,6 +798,100 @@ public final class PanelViewModel: ObservableObject {
         let succeeded = historyExportClosure("statusbutler-history.csv", HistoryCSV.eventsToCSV(events))
         lastHistoryExportSucceeded = succeeded
         return succeeded
+    }
+
+    // MARK: - 会议条（T-211：进行中会议条 + 一键入会 + 会议中静音）
+
+    /// 单次拉取会议条（旁路轮询循环本体；未接线是安全 no-op）
+    public func refreshMeetingBar() {
+        guard let meetingBarProvider else { return }
+        meetingBar = meetingBarProvider()
+    }
+
+    /// 一键入会（MTG-01）：打开注入 openExternal（NSWorkspace 拉起客户端/浏览器）
+    public func joinCurrentMeeting() {
+        guard let joinURL = meetingBar?.joinURL else { return }
+        openExternal(joinURL)
+    }
+
+    /// 会议中静音切换（MTG-02）：经注入闭包（T-041b MuteControlling 包装）；
+    /// 返回切换后静音态并立即重拉会议条（静音徽标即时回显），nil = 失败/不可用
+    @discardableResult
+    public func toggleMeetingMute() -> Bool? {
+        guard let meetingMuteToggler else { return nil }
+        let newMuted = meetingMuteToggler()
+        refreshMeetingBar()
+        return newMuted
+    }
+
+    // MARK: - 电池养护页（T-212：月度小结，按需数据）
+
+    /// 读取养护页数据（push(.batteryCare) 自动触发；总览行走 refreshBatteryDetails）
+    public func refreshBatteryCare() {
+        guard let batteryCareReader else { return }
+        careDaily = batteryCareReader.careDailySeries()
+        careMonthly = BatteryCareMapping.monthlySummaries(
+            daily: careDaily,
+            events: batteryCareReader.allEvents()
+        )
+    }
+
+    // MARK: - 插件管理页（T-213：扫描列表 + 重载复位，按需数据）
+
+    /// 重扫插件列表（push(.plugins) 自动触发；重载后手动重扫反映新计数）
+    public func refreshPluginRows() {
+        guard let pluginListProvider else { return }
+        pluginRows = pluginListProvider()
+    }
+
+    /// 重载 = 复位连败计数（runner.reset）+ 重扫列表；三连击停用后的唯一恢复通道
+    public func reloadPlugin(_ id: String) {
+        pluginReloadAction?(id)
+        refreshPluginRows()
+    }
+
+    // MARK: - Shortcuts 钉选（T-216：执行深链 + 浏览入口）
+
+    /// 执行钉选的快捷指令（Apple 文档化 run-shortcut 深链；名字构造失败即放弃）
+    public func runShortcut(_ pin: ShortcutPin) {
+        guard let url = ShortcutLink.runURL(name: pin.name) else { return }
+        openExternal(url)
+    }
+
+    /// 打开 Shortcuts App（"Shortcuts…"按钮——macOS 无枚举 API，浏览跳本体）
+    public func openShortcutsApp() {
+        openExternal(ShortcutLink.appURL)
+    }
+
+    // MARK: - 更新扫描（T-221：brew 比对提示，用户触发才发网络请求）
+
+    /// 检查更新：解析本地清单 → 逐 cask 比对远端版本（串行——几个 cask 的
+    /// 顺序往返好过并发池打 API；"有人看才运行"在入口闸已兑现，这里不节流）。
+    /// 防重入：扫描中再点不叠加任务
+    public func checkForUpdates() {
+        guard let brewListProvider, let caskVersionFetcher, updateScanTask == nil else { return }
+        isUpdateScanning = true
+        updateScanTask = Task { [weak self] in
+            let casks = BrewListParser.parse(brewListProvider())
+            var results: [CaskUpdate] = []
+            for cask in casks {
+                if Task.isCancelled { return }
+                let latest = await caskVersionFetcher.latestVersion(token: cask.name)
+                results.append(CaskComparison.compare(installed: cask, latestVersion: latest))
+            }
+            guard !Task.isCancelled else { return }
+            guard let self else { return }
+            self.updateResults = results
+            self.updateScanSummary = CaskComparison.summaryText(for: results)
+            self.isUpdateScanning = false
+            self.updateScanTask = nil
+        }
+    }
+
+    /// 结果行"官网"出口（cask 官方页深链；纯提示不代装）
+    public func openCaskHomepage(_ update: CaskUpdate) {
+        guard let url = update.homepageURL else { return }
+        openExternal(url)
     }
 }
 

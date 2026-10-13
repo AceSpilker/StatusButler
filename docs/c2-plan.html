@@ -73,8 +73,8 @@
     <tr><td>T-212</td><td>电池养护页（E13）：养护总览（充电上限/优化充电状态）+ 提醒规则 + 月度小结（数据来自 E10 库）</td><td>E13/S4</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-213</td><td>插件管理页（E16/SP-03）：扫描列表（名称/作者/刷新率/健康）+ 启停/重载 + 三连击复位</td><td>E16</td><td><span class="badge b-gray">已完成</span></td></tr>
     <tr><td>T-214</td><td>昼夜主题 + DDC 亮度面板（E23+E14 同域）：跟随外观/日出日落切主题 + 外接屏亮度滑杆 + 自动调光</td><td>E14/E23</td><td><span class="badge b-gray">已完成</span></td></tr>
-    <tr><td>T-215</td><td>通知系统接线：温度警报（A5·TF-30）/电池养护提醒/体检每周提醒/充电起止——UNUserNotificationCenter + 频率限制，全部默认关</td><td>E11/E13/E18</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-216</td><td>动作中心 Shortcuts 钉选（E2/AC-03）：浏览系统快捷指令列表 + 钉进面板 + 执行</td><td>E2</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-215</td><td>通知系统接线：温度警报（A5·TF-30）/电池养护提醒/体检每周提醒/充电起止——UNUserNotificationCenter + 频率限制，全部默认关</td><td>E11/E13/E18</td><td><span class="badge b-gray">已完成</span></td></tr>
+    <tr><td>T-216</td><td>动作中心 Shortcuts 钉选（E2/AC-03）：浏览系统快捷指令列表 + 钉进面板 + 执行</td><td>E2</td><td><span class="badge b-gray">已完成</span></td></tr>
   </table>
 
   <h2>批次 P3 · 半天件与可选（T-217~221）</h2>
@@ -84,7 +84,7 @@
     <tr><td>T-218</td><td>磁盘 I/O 与空间预警（E19）：采样器 + 性能面板第四图 + 低于阈值通知（并入 T-215 通道）</td><td>E19</td><td><span class="badge b-gray">未开始</span></td></tr>
     <tr><td>T-219</td><td>iCloud 设置收尾（E8）：GeneralPane 开关 UI + entitlements 模板文件 + 容器配置用户清单（容器创建本身属外部）</td><td>E8</td><td><span class="badge b-gray">未开始</span></td></tr>
     <tr><td>T-220</td><td>趣味皮肤（E24）：CPU 负载驱动小动画槽位皮肤，默认关、随主题分发</td><td>E24</td><td><span class="badge b-gray">未开始</span></td></tr>
-    <tr><td>T-221</td><td>更新扫描（E25）：Homebrew cask 数据源比对提示（https 三道闸纪律），不代装</td><td>E25</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-221</td><td>更新扫描（E25）：Homebrew cask 数据源比对提示（https 三道闸纪律），不代装</td><td>E25</td><td><span class="badge b-gray">已完成</span></td></tr>
   </table>
 
   <h2>批次 P4 · 规格级与决策（T-222~226）</h2>
@@ -116,6 +116,10 @@
     <tr><td>T-210</td><td>2026-10-13</td><td>Dock 锚定半件 2 用例：anchorFrame 纯函数（含屏选择 / 越界钳进 fallback / 无屏放弃）+ WindowServer 能力守卫用例（show(at:) 锚定窗在役、弹层位于点位上方、toggle 收起即撤窗不留孤儿窗）；App 侧调用点改法见 StatusPopoverController.swift 集成注记；音量 up/down 步进待接——任务进行中</td><td>本提交</td></tr>
   
     <tr><td>P1 终集成</td><td>2026-10-13</td><td>4 agent 并行交付（ζ 702/η 697/θ 699/ι 696 各分支全绿）→ 主线合并+GPU 占位消解+LiveServices 八处挂线（城市闭包/DDC 路由/perf+GPU/输入/iDevice/热键整组重注册/布局热应用/音量步进）；全量 <strong>92 套件 754 用例全绿</strong>（+74）</td><td>本提交</td></tr>
+
+    <tr><td>T-211/212/213</td><td>2026-10-13</td><td>swift build + swift test 两遍全绿；新增 PanelZoneP2Tests 其中 9 用例：会议条 inMeeting 判定（带链接进行中/无链接/未开始/全天四态）+ 一键入会走注入 openExternal 断言 URL + 静音闭包透传与重拉回显（未接线 nil 不伪装）/ 养护月度聚合（分月均值·容量与循环增量·chargeStart 计数·单点月与事件月边界）+ 充电上限缺测诚实"—"三态充电文案 + push 按需加载与假 IORegistry 详情落定 / 插件健康三连击分档（0 正常/1-2 连败/≥3 停用复用 runner 门限）+ manifest 行映射 + 重载闭包复位与重扫反映（未接线 no-op）</td><td>本提交</td></tr>
+    <tr><td>T-215</td><td>2026-10-13</td><td>NotificationRouterTests 8 用例：三规则形态钉死（90°×60s/20%/60 分×7 天冷却）/ 授权流经注入协议（批准/拒绝/无投递面三态）/ 温度持续 60s 满才发与 600s 冷却矩阵（59s 不发·边界放行）/ 电池首见即发与 1800s 冷却及中断重计 / 不同规则独立冷却（电池冷却内不挡体检首发，投递内容按规则 title/body）/ 缺测不累计 sustain / 授权被拒判定照常投递抑制且占冷却窗 / 阈值口径边界（&gt;90、&lt;20、&lt;60 严格不等）</td><td>本提交</td></tr>
+    <tr><td>T-216/221</td><td>2026-10-13</td><td>PanelZoneP2Tests 其余 7 用例：Shortcuts 深链构造（shortcuts:// 与 run-shortcut?name= 百分号编码 round-trip，中文/空格/ASCII）/ 钉选注入与执行+浏览双出口 URL 断言 + 未接线不虚构枚举 / brew list --versions 解析（token+版本/裸名单 nil/空行/双版本取首）/ 比对（不等即旧·缺测 nil 不猜）与告警文案四态 / 三道闸之闸 1（https+白名单·http 拒·仿冒前缀域拒）与 token 注入闸 / cask JSON version 提取坏输入三态 / VM 全流程（首入自动查·结果与汇总·官网深链·重进不自动重查·未接线 no-op）；全量 <strong>94 套件 778 用例两遍全绿</strong>（+24）</td><td>本提交</td></tr>
   </table>
 
   <div class="callout">📌 执行方式延续：P1/P2 适合 4~5 agent 并行（文件分区：设置区/弹层区/服务区），P3 串行或小并行，P4 逐项（T-222 单独一轮）。每个任务完成即更新本表+测试报告+commit 尾注 <code>(T-2xx)</code>。</div>
