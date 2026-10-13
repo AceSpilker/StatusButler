@@ -32,15 +32,9 @@ jobs:
           xcode-select -p
           swift --version
 
-      - name: 测试（Swift Testing）
-        shell: bash
-        run: |
-          set -o pipefail
-          if ! swift test 2>&1 | tee /tmp/test.log; then
-            echo "=== 失败用例（来自 CI 注解诊断）==="
-            grep -E "recorded an issue|failed after .* with" /tmp/test.log | sed 's/^/::error::/' | head -25
-            exit 1
-          fi
+      # 测试由 CI main 覆盖（每次 push 全量验证）；Release 仅 build+打包
+      - name: 构建（Release）
+        run: swift build -c release
 
       - name: 发布链（release 构建 → DMG UDZO → SHA-256 → 自校验）
         run: bash scripts/release-app.sh --no-publish
