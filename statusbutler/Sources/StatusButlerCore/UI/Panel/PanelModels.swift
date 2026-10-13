@@ -109,6 +109,8 @@ public enum PanelRoute: String, Equatable, Sendable, CaseIterable {
     case batteryDetails
     /// 体检报告（A3·E18）
     case healthReport
+    /// 历史查看（E10：电池健康曲线 + 事件日志 + CSV 导出，T-207）
+    case history
 
     public var title: String {
         switch self {
@@ -116,6 +118,7 @@ public enum PanelRoute: String, Equatable, Sendable, CaseIterable {
         case .linkDetails: return "链路详情"
         case .batteryDetails: return "电池详情"
         case .healthReport: return "体检报告"
+        case .history: return "历史记录"
         }
     }
 
@@ -125,6 +128,7 @@ public enum PanelRoute: String, Equatable, Sendable, CaseIterable {
         case .linkDetails: return "point.3.connected.trianglepath.dotted"
         case .batteryDetails: return "battery.100.bolt"
         case .healthReport: return "stethoscope"
+        case .history: return "chart.xyaxis.line"
         }
     }
 }

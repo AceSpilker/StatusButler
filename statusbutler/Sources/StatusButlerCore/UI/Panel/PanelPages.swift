@@ -43,6 +43,7 @@ struct PanelPageContainer: View {
         case .linkDetails: LinkDetailsPage(viewModel: viewModel)
         case .batteryDetails: BatteryDetailsPage(viewModel: viewModel)
         case .healthReport: HealthReportPage(viewModel: viewModel)
+        case .history: HistoryPage(viewModel: viewModel)
         }
     }
 }
@@ -506,6 +507,224 @@ private struct HealthResultRow: View {
         case .fail: return "未通过"
         case .notApplicable: return "不适用"
         }
+    }
+}
+
+// MARK: - 历史查看页（E10/T-207：电池健康曲线 + 事件日志筛选 + CSV 导出）
+
+struct HistoryPage: View {
+    @ObservedObject var viewModel: PanelViewModel
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                chartSection
+                eventsSection
+                exportSection
+            }
+        }
+    }
+
+    // MARK: 曲线区
+
+    @ViewBuilder
+    private var chartSection: some View {
+        GroupBox("电池健康（每日容量%）") {
+            if viewModel.historyDaily.isEmpty {
+                VStack(spacing: 6) {
+                    Image(systemName: PanelRoute.history.symbolName)
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("暂无每日记录")
+                        .font(.callout)
+                    Text("后台每天记一行电池容量，数天后这里出现趋势曲线")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    BatteryHealthChartView(series: viewModel.historyDaily)
+                        .frame(height: 120)
+                    HStack {
+                        Text(firstDateText)
+                        Spacer()
+                        Text(latestCapacityText)
+                        Spacer()
+                        Text(lastDateText)
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private var firstDateText: String {
+        viewModel.historyDaily.first?.date ?? ""
+    }
+
+    private var lastDateText: String {
+        viewModel.historyDaily.last?.date ?? ""
+    }
+
+    private var latestCapacityText: String {
+        guard let latest = viewModel.historyDaily.last else { return "" }
+        return "最新 \(latest.batteryCapacityPercent)%"
+    }
+
+    // MARK: 事件区
+
+    private var eventsSection: some View {
+        GroupBox("事件日志") {
+            VStack(alignment: .leading, spacing: 6) {
+                if !viewModel.historyEventKindOptions.isEmpty {
+                    Picker("类型", selection: filterBinding) {
+                        Text("全部").tag(String?.none)
+                        ForEach(viewModel.historyEventKindOptions, id: \.self) { kind in
+                            Text(HistoryEventFormatting.kindDisplayName(kind))
+                                .tag(String?.some(kind))
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                }
+                if viewModel.filteredHistoryEvents.isEmpty {
+                    Text(
+                        viewModel.historyEvents.isEmpty
+                            ? "暂无事件记录"
+                            : "当前筛选无匹配事件"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                } else {
+                    ForEach(viewModel.filteredHistoryEvents) { row in
+                        HistoryEventRowView(row: row)
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+
+    /// Picker 双向绑定：写入走 VM 方法（筛选是页内瞬态，不进设置持久化）
+    private var filterBinding: Binding<String?> {
+        Binding(
+            get: { viewModel.historyEventFilter },
+            set: { viewModel.setHistoryEventFilter($0) }
+        )
+    }
+
+    // MARK: 导出区
+
+    private var exportSection: some View {
+        GroupBox("导出") {
+            HStack(spacing: 8) {
+                Text("把当前筛选的事件导出为 CSV（时间/类型/描述全字段）")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 4)
+                Button {
+                    _ = viewModel.exportHistoryCSV()
+                } label: {
+                    Label("导出 CSV", systemImage: "square.and.arrow.up")
+                        .font(.callout)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(Color.blue.opacity(0.18)))
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!viewModel.isHistoryExportAvailable || viewModel.filteredHistoryEvents.isEmpty)
+                if let succeeded = viewModel.lastHistoryExportSucceeded {
+                    Text(succeeded ? "已导出" : "导出未完成")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+}
+
+/// 自绘容量折线（macOS 13 兼容：Canvas + Path。不引 Swift Charts——一条折线的
+/// 包体代价不划算，且固定 y 域 0-100 的口径在 HistoryChartMapping 纯函数里可测）。
+/// 80% 虚线参考 = BatteryHealthTier.attention 门限，曲线一眼对齐"注意"线
+struct BatteryHealthChartView: View {
+    let series: [DailyMetricPoint]
+
+    var body: some View {
+        Canvas { context, size in
+            let points = HistoryChartMapping.capacityPoints(series, size: size)
+            guard !points.isEmpty else { return }
+            if let referenceY = HistoryChartMapping.referenceLineY(atPercent: 80, height: size.height) {
+                let reference = Path { path in
+                    path.move(to: CGPoint(x: 0, y: referenceY))
+                    path.addLine(to: CGPoint(x: size.width, y: referenceY))
+                }
+                context.stroke(
+                    reference,
+                    with: .color(.secondary.opacity(0.4)),
+                    style: StrokeStyle(lineWidth: 0.5, dash: [3, 3])
+                )
+            }
+            var line = Path()
+            line.move(to: points[0])
+            for point in points.dropFirst() {
+                line.addLine(to: point)
+            }
+            context.stroke(
+                line,
+                with: .color(.accentColor),
+                style: StrokeStyle(lineWidth: 1.5, lineJoin: .round)
+            )
+            for point in [points.first, points.last] {
+                guard let point else { continue }
+                let dot = Path(
+                    ellipseIn: CGRect(x: point.x - 2.5, y: point.y - 2.5, width: 5, height: 5)
+                )
+                context.fill(dot, with: .color(.accentColor))
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.quaternary.opacity(0.25))
+        )
+    }
+}
+
+/// 单事件行：类型图标 + 名称/描述 + 时间（新在前，倒序由 VM 保证）
+struct HistoryEventRowView: View {
+    let row: EventRow
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Image(systemName: HistoryEventFormatting.symbolName(for: row.kind))
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(HistoryEventFormatting.kindDisplayName(row.kind))
+                    .font(.callout)
+                if let detail = row.detail, !detail.isEmpty {
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 4)
+            Text(HistoryEventFormatting.timeText(iso: row.at))
+                .font(.caption2)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
     }
 }
 

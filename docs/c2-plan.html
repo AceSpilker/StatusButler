@@ -109,6 +109,11 @@
   <table>
     <tr><th style="width:62px">任务号</th><th style="width:96px">日期</th><th>测试内容（命令 / 用例数 / 结果）</th><th style="width:90px">证据提交</th></tr>
     <tr><td>T-201/206/208/209</td><td>2026-10-13</td><td>swift build + swift test 两遍全绿（702 tests / 85 suites）；新增 SettingsZoneP1Tests 22 用例：城市表 87 城与搜索四形态（中文前缀/包含、拼音大小写、空查询全表、修剪）/weatherCity 持久化与清除；热键捕获 NSEvent.ModifierFlags→Carbon 位掩码（仅⇧/裸键拒绝）/展示序 ⌃⌥⇧⌘/冲突分组表/键位 JSON 往返/动作 id 对齐 ActionRegistry；主题导入三失败分型（badJSON/schemaTooNew/missingVersion）+面板取消与读失败态/差异表行数与现值新值/确认应用跳过项/导出快照往返收敛/导出失败与取消分型；布局持久化+旧数据 sanitized 修复+坏数据兜底/上下移边界与跨步/显隐子集不变量</td><td>(T-201, T-206, T-208, T-209)</td></tr>
+    <tr><td>T-203</td><td>2026-10-13</td><td>swift build && swift test 全绿（全量 697 用例）；新增 PanelZoneP1Tests 性能 7 用例：provider 未接线占位 / 可见期旁路轮询启停 / CPU 总值与 P-E 分组（拓扑不符拒绝猜）/ 内存 used-total 与压力档边界（0.7/0.9）/ 网速 ↑↓ 可读化 / GPU 回退链与双 nil 隐藏；GPU 契约占位在 PerfPanelSupport.swift（引擎字段落地前恒 nil，合并时以引擎侧为准）</td><td>本提交</td></tr>
+    <tr><td>T-204</td><td>2026-10-13</td><td>面板行 2 用例：provider 未接线与无读数双隐藏 / 设备名+音量%+静音徽标映射（空名降级"麦克风"）；设置开关默认关由主线接（集成注记在 DevicePanelSupport.swift）——面板半场完成，任务进行中</td><td>本提交</td></tr>
+    <tr><td>T-205</td><td>2026-10-13</td><td>1 用例钉死三态：provider 未接线整行隐藏 / 设备清单（iPhone 72%、Watch 无电量 "—"、充电文案）/ summary nil·空设备·helper unavailable 共用引导文案"未检测到 Apple 设备（USB）"</td><td>本提交</td></tr>
+    <tr><td>T-207</td><td>2026-10-13</td><td>5 用例：push 加载每日序列与事件（未接线不读）/ 类型筛选与选项排序及弹层关闭复位、数据刷新后失效筛选归零 / 自绘折线点生成（单点退化·x 均分·y 反转·80% 参考线）/ CSV 经注入闭包所见即所得（复用 HistoryCSV 转义、未接线不伪装成功）/ 事件格式化与 HistoryDatabase→HistoryReading 内存库适配</td><td>本提交</td></tr>
+    <tr><td>T-210</td><td>2026-10-13</td><td>Dock 锚定半件 2 用例：anchorFrame 纯函数（含屏选择 / 越界钳进 fallback / 无屏放弃）+ WindowServer 能力守卫用例（show(at:) 锚定窗在役、弹层位于点位上方、toggle 收起即撤窗不留孤儿窗）；App 侧调用点改法见 StatusPopoverController.swift 集成注记；音量 up/down 步进待接——任务进行中</td><td>本提交</td></tr>
   </table>
 
   <div class="callout">📌 执行方式延续：P1/P2 适合 4~5 agent 并行（文件分区：设置区/弹层区/服务区），P3 串行或小并行，P4 逐项（T-222 单独一轮）。每个任务完成即更新本表+测试报告+commit 尾注 <code>(T-2xx)</code>。</div>
