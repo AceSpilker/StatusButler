@@ -94,3 +94,37 @@ public struct PanelLayout: Codable, Sendable, Equatable {
         return PanelLayout(visibleSections: repairedVisible, order: repairedOrder)
     }
 }
+
+// MARK: - 下钻路由（A14-β）
+
+/// 弹层内导航栈的路由（A2·S3/S4/S5 下钻三页 + A3·E18 体检报告页）。
+/// 有意不做成 PanelSectionID 新 case：分区 enum 的 rawValue 是持久化键、
+/// 且有既有测试钉死 6 分区数量——下钻页是"从分区行进入的二级页面"，不是可拖拽排序的分区
+public enum PanelRoute: String, Equatable, Sendable, CaseIterable {
+    /// 附近网络列表（点击行跳系统 Wi-Fi 设置）
+    case nearbyNetworks
+    /// 链路详情（接口/VPN/受限/地址）
+    case linkDetails
+    /// 电池详情（循环/健康度/电压电流）
+    case batteryDetails
+    /// 体检报告（A3·E18）
+    case healthReport
+
+    public var title: String {
+        switch self {
+        case .nearbyNetworks: return "附近网络"
+        case .linkDetails: return "链路详情"
+        case .batteryDetails: return "电池详情"
+        case .healthReport: return "体检报告"
+        }
+    }
+
+    public var symbolName: String {
+        switch self {
+        case .nearbyNetworks: return "wifi"
+        case .linkDetails: return "point.3.connected.trianglepath.dotted"
+        case .batteryDetails: return "battery.100.bolt"
+        case .healthReport: return "stethoscope"
+        }
+    }
+}
