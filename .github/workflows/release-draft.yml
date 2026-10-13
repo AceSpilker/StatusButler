@@ -54,7 +54,7 @@ jobs:
       # ---- publish 门控段（T-056）：只在手动触发且显式勾选 publish 时进入 ----
 
       - name: 签名 + 公证（publish 门控）
-        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
         env:
           # Developer ID p12（base64）与三把钥匙串口令；APP_STORE_CONNECT 组用于 notarytool keychain profile
           DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_APPLICATION_P12 }}
@@ -92,7 +92,7 @@ jobs:
           xcrun stapler staple "$DMG"
 
       - name: 组装 appcast.xml（publish 门控）
-        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
         env:
           # EdDSA 私钥由上游 sign_update 对 DMG 计算签名后注入（gen-appcast-fragments.rb 只读成品签名）
           SPARKLE_EDDSA_KEY: ${{ secrets.SPARKLE_EDDSA_KEY }}
@@ -124,7 +124,7 @@ jobs:
           cat dist/appcast/appcast.xml
 
       - name: 发布 GitHub Release（草稿，publish 门控）
-        if: github.event_name == 'workflow_dispatch' && inputs.publish == true
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish == true)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
