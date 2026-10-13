@@ -156,7 +156,8 @@ public struct DDCClient: Sendable {
     /// 读当前值：两段式（社区标准）——先写"读当前值"请求，再读 8 字节应答，
     /// 应答布局 [源, 0x82, 长度, 操作码, maxHi, maxLo, curHi, curLo]，
     /// 按 cur/max 比例换算 0-100（不同显示器 MCCS 满量程不一）。
-    private func readValue(register: UInt8, of display: DDCDisplay) -> Int? {
+    /// internal（A14-δ）：音量扩展（DDCVolume.swift）复用同一两段式读值管道
+    func readValue(register: UInt8, of display: DDCDisplay) -> Int? {
         guard let symbols else { return nil }
         return withAVService(for: display, symbols: symbols) { av in
             let request = DDCFrame.getValueCommand(register: register)
@@ -174,7 +175,8 @@ public struct DDCClient: Sendable {
         }
     }
 
-    private func writeDDC(register: UInt8, value: Int, to display: DDCDisplay) -> Bool {
+    /// internal（A14-δ）：音量扩展（DDCVolume.swift）复用同一出口钳制 + 写管道
+    func writeDDC(register: UInt8, value: Int, to display: DDCDisplay) -> Bool {
         // 双重出口钳制：public 入口已 clamp，这里再钉一次 0-100（防未来调用方绕过）
         guard let symbols, (0...100).contains(value), let byte = UInt8(exactly: value) else {
             return false
