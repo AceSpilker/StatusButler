@@ -12,22 +12,6 @@ import Foundation
 /// ⚠️ 合并纪律（弹层区 → 引擎区）：引擎分支正在 Monitoring/Perf/ 落地同名类型与
 /// `PerfSample.gpu` 存储属性——**合并时以引擎侧定义为准**，删除本 struct 与下方
 /// extension 占位（同名双存会直接编译报重声明，响亮失败不怕漏删）。
-public struct GpuUsage: Equatable, Sendable {
-    public let activePercent: Double?
-    public let powerMilliwatts: Double?
-
-    public init(activePercent: Double? = nil, powerMilliwatts: Double? = nil) {
-        self.activePercent = activePercent
-        self.powerMilliwatts = powerMilliwatts
-    }
-}
-
-extension PerfSample {
-    /// 契约占位：引擎存储属性落地前恒 nil（GPU 行因此隐藏，不显示假 0%）。
-    /// ⚠️ 合并时删除——见 GpuUsage 的合并纪律注记
-    public var gpu: GpuUsage? { nil }
-}
-
 // MARK: - CPU P/E 拓扑
 
 /// CPU 核拓扑（P/E 核数）。mach 每核占用数组在 Apple Silicon 上 P 核在前、
