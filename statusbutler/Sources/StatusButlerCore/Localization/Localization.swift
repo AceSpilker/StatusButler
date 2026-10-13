@@ -68,6 +68,20 @@ public enum LocalizationKey: String, CaseIterable, Sendable {
     case wifiNoInternet
     case volumeMuted
     case fanModeSystem
+
+    // App 壳与启动集成（T-058 / A14 审计三）
+    case settingsLanguageEffect
+    case settingsLaunchAtLogin
+    case settingsLaunchAtLoginSubtitle
+    case loginItemRequiresApproval
+    case loginItemOpenSettings
+    case settingsTelemetry
+    case telemetryNotAsked
+    case telemetryOptedIn
+    case telemetryOptedOut
+    case telemetryAskTitle
+    case telemetryAskMessage
+    case updateChannelBlocked
 }
 
 /// 取词器：值对象（非单例）。语言切换时由组合根整体重建，避免全局可变状态
@@ -107,6 +121,18 @@ public struct Localization: Sendable, Equatable {
         .wifiNoInternet: "已连接，但无法访问网络",
         .volumeMuted: "已静音",
         .fanModeSystem: "跟随系统",
+        .settingsLanguageEffect: "切换立即生效，无需重启",
+        .settingsLaunchAtLogin: "开机自动启动",
+        .settingsLaunchAtLoginSubtitle: "登录 macOS 后自动在菜单栏待命",
+        .loginItemRequiresApproval: "macOS 需要你在「登录项与扩展」中批准本 App",
+        .loginItemOpenSettings: "打开登录项设置…",
+        .settingsTelemetry: "匿名使用统计",
+        .telemetryNotAsked: "未设置",
+        .telemetryOptedIn: "分享",
+        .telemetryOptedOut: "不分享",
+        .telemetryAskTitle: "帮助改进状态管家？",
+        .telemetryAskMessage: "分享匿名使用统计吗？每天至多一条心跳（App/系统版本、语言、图标位置），默认关闭，可随时在设置中更改。",
+        .updateChannelBlocked: "更新通道未开通（feed 指占位域）——上线换配置后此按钮自动生效",
     ]
 
     public static let english: [LocalizationKey: String] = [
@@ -142,6 +168,18 @@ public struct Localization: Sendable, Equatable {
         .wifiNoInternet: "Connected, No Internet",
         .volumeMuted: "Muted",
         .fanModeSystem: "System Managed",
+        .settingsLanguageEffect: "Takes effect immediately, no restart needed",
+        .settingsLaunchAtLogin: "Launch at Login",
+        .settingsLaunchAtLoginSubtitle: "Stay ready in the menu bar after you log in",
+        .loginItemRequiresApproval: "macOS needs your approval in Login Items & Extensions",
+        .loginItemOpenSettings: "Open Login Items Settings…",
+        .settingsTelemetry: "Anonymous Usage Statistics",
+        .telemetryNotAsked: "Not Set",
+        .telemetryOptedIn: "Share",
+        .telemetryOptedOut: "Don't Share",
+        .telemetryAskTitle: "Help Improve StatusButler?",
+        .telemetryAskMessage: "Share anonymous usage statistics? At most one heartbeat per day (app/system version, language, icon placement). Off by default; change anytime in Settings.",
+        .updateChannelBlocked: "Update channel not open yet (feed is a placeholder) — this button activates once configured at release",
     ]
 
     public let language: AppLanguage

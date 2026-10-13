@@ -167,6 +167,12 @@
     <tr><td>T-057</td><td>全量回归 + 真机验证矩阵（Ventura/…/当前）+ 文档终稿</td><td>1.4</td><td>W14</td><td><span class="badge b-gray">已完成</span></td></tr>
   </table>
 
+  <h3>批次 7 · A14 集成补课（W15~，多 agent 并行）</h3>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">规格依据</th><th style="width:80px">排期</th><th style="width:76px">状态</th></tr>
+    <tr><td>T-058</td><td>App 壳与启动集成：单实例锁 + 开机自启动（SMAppService）+ Dock 点击 reopen 行为 + Sparkle 启动接线 + 遥测调度/同意接线 + 语言切换生效（菜单文案本地化）</td><td><a href="a2-features.html#s2" target="_parent">A2·S2</a> <a href="a2-features.html#s11" target="_parent">A2·S11</a> <a href="a14-audit.html" target="_parent">A14·三</a></td><td>W15</td><td><span class="badge b-green">已完成</span></td></tr>
+  </table>
+
   <h2>三、测试报告（每任务完成后登记）</h2>
   <p>登记规则：任务完成的同一提交里更新本表对应行；证据 = 测试运行的命令与摘要 + 提交号；失败项必须附问题编号与修复提交。</p>
   <table>
@@ -202,6 +208,7 @@
     <tr><td>T-054</td><td>2026-10-12</td><td>扩展 target 迁移收尾：Package.swift 增 StatusButlerWidgets（executableTarget，产物名避开主 App 大小写冲突有测试钉死）+ @main WidgetBundle 六族组装（元数据全读 WidgetFamilyMap 注册表）+ scripts/assemble-appex.sh（--dry-run 清单/版本注入/参数白名单）+ build-app.sh 组 PlugIns/StatusButlerWidgets.appex 并嵌 Sparkle.framework（主/扩展 rpath 双补丁，codesign --verify --deep --strict ✓）；swift test 全量 <strong>56 套件 467 用例全绿</strong>（新增 target 唯一性/appex 模板契约/dry-run 清单 6 用例）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-055</td><td>2026-10-12</td><td>Sparkle 2 接线：Package 依赖 Sparkle（2.x，经 Core 引入）+ App/UpdaterController.swift（SPUStandardUpdaterController 参考式封装，canCheckForUpdates 绑定点，startingUpdater 绑 isConfigured）+ Info.plist 三键（SUFeedURL 指 .invalid 占位/SUPublicEDKey 空/SUEnableAutomaticChecks）+ AboutPane"检查更新"按钮（占位阶段禁用，上线换 plist 自动激活）；swift test 全量 <strong>56 套件 467 用例全绿</strong>（新增 UpdaterFeedInfo 键读取/占位域 fail-safe/plist 契约 5 用例）</td><td>agent 分支→merge</td></tr>
     <tr><td>T-056</td><td>2026-10-12</td><td>publish 门控收尾：release-draft.yml 增 publish 布尔输入（默认 false，三步全挂 workflow_dispatch+inputs.publish 双条件）——Developer ID 签名+notarytool+stapler 模板（Secrets 缺失回落 ad-hoc 并 ::notice:: 注明）、appcast.xml 组装步（gen-appcast-fragments.rb 片段拼 rss/channel 根元素，EdDSA key 自 secrets.SPARKLE_EDDSA_KEY）、gh release 草稿步；本地 release-app.sh --no-publish 实跑（DMG+SHA-256 自校验 ✓，DMG 含 appex+Sparkle.framework）；swift test 全量 <strong>56 套件 467 用例全绿</strong>（publish 门控契约 1 用例更新既有 workflow 契约）；附注：正式链模板待 Secrets 就绪后实跑校准（证书/Profile 名）</td><td>agent 分支→merge</td></tr>
+    <tr><td>T-058</td><td>2026-10-13</td><td>App 壳集成 <strong>31 用例</strong>：单实例判定 4（同 Bundle ID/自忽略/无 Bundle ID fail-open/多副本取首）+ Dock 决策表 4（Dock 点击弹层/无 Dock 图标开设置/Launchpad 同事件区分/冷启动不动）+ Dock 区域几何 4（三朝向推断/可见条带/自动隐藏容差/左右边）+ 登录项 5（SMAppService 状态映射/待批准算开/didSet 注册注销/初值随系统态/待批准透传）+ 语言 4（三态持久化/languageVersion 递增/取词快照随语言/脏值回落）+ 菜单本地化 3（双语言标题对照/版本占位禁用/控制器语言切换重建——CI 守卫）+ consent 4（与调度器同键互读/脏值回落/首问判定/notAsked 不发）+ 更新拦截裁决 3（占位域不放行/忙碌拦/真配置放行）；swift build ✓ · 全量 <strong>67 套件 546 用例双跑全绿</strong></td><td>agent 分支→merge</td></tr>
   </table>
   <h3>行模板</h3>
   <pre>T-0XX | 2026-MM-DD | swift test（32 用例，32 通过/0 失败）+ 契约脚本 verify-xxx ✓ | <a>commit hash</a>

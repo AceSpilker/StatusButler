@@ -72,7 +72,7 @@ public struct SettingsRootView: View {
         case .general: GeneralPane(settings: settings)
         case .appearance: AppearancePane(settings: settings)
         case .panel: PanelPane(settings: settings)
-        case .about: AboutPane()
+        case .about: AboutPane(settings: settings)
         case nil: GeneralPane(settings: settings)
         }
     }
@@ -90,14 +90,16 @@ public struct GeneralPane: View {
     public var body: some View {
         Form {
             Section {
-                // 占位：本地化键外置与语言切换随 OG-FR-191 落地，届时换 Menu + Bundle 资源
-                PreferenceRow("App 语言", subtitle: "多语言随本地化任务启用") {
-                    Picker("App 语言", selection: .constant("zh-Hans")) {
-                        Text("简体中文（默认）").tag("zh-Hans")
+                // 语言切换（OG-FR-191）：appLanguage didSet 落盘 + languageVersion 信号驱动本页重算
+                PreferenceRow(l10n(.settingsLanguage), subtitle: l10n(.settingsLanguageEffect)) {
+                    Picker(l10n(.settingsLanguage), selection: $settings.appLanguage) {
+                        ForEach(AppLanguage.allCases, id: \.self) { language in
+                            Text(settings.localization.string(language.titleKey))
+                                .tag(language)
+                        }
                     }
                     .labelsHidden()
                     .fixedSize()
-                    .disabled(true)
                 }
                 PreferenceRow("刷新间隔", subtitle: "监控器采样周期；调小更实时、更耗电") {
                     Slider(
@@ -121,10 +123,48 @@ public struct GeneralPane: View {
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
-                // 占位：SMAppService.MainApp 登录项注册随启动任务接入
-                PreferenceCheckboxRow("开机自动启动", subtitle: "登录项注册待接入", isOn: .constant(false))
-                    .disabled(true)
+                // 开机自启动（A2·S2）：SMAppService 注册/注销由 SettingsStore.didSet 驱动；
+                // 非 .app 宿主（swift run）系统无法管理登录项，开关禁用保诚实
+                PreferenceCheckboxRow(
+                    l10n(.settingsLaunchAtLogin),
+                    subtitle: l10n(.settingsLaunchAtLoginSubtitle),
+                    isOn: $settings.launchAtLogin
+                )
+                .disabled(!settings.isLoginItemSupported)
+                if settings.loginItemStatus == .requiresApproval {
+                    PreferenceRow(l10n(.loginItemRequiresApproval), subtitle: nil) {
+                        Button(l10n(.loginItemOpenSettings)) {
+                            settings.openLoginItemsSettings()
+                        }
+                    }
+                }
+                // 遥测三态（OG-FR-201 默认关）：未设置态显式可见，提示用户决策过
+                PreferenceRow(l10n(.settingsTelemetry), subtitle: nil) {
+                    Picker(l10n(.settingsTelemetry), selection: $settings.telemetryConsent) {
+                        ForEach(TelemetryConsent.allCases, id: \.self) { consent in
+                            Text(l10n(consent.localizationKey))
+                                .tag(consent)
+                        }
+                    }
+                    .labelsHidden()
+                    .fixedSize()
+                }
             }
+        }
+    }
+
+    private func l10n(_ key: LocalizationKey) -> String {
+        settings.localization.string(key)
+    }
+}
+
+/// 三态 → 展示文案键（设置页专用映射；键集合在 Localization 单点登记）
+private extension TelemetryConsent {
+    var localizationKey: LocalizationKey {
+        switch self {
+        case .notAsked: .telemetryNotAsked
+        case .optedIn: .telemetryOptedIn
+        case .optedOut: .telemetryOptedOut
         }
     }
 }
@@ -219,17 +259,23 @@ public struct AboutPane: View {
     /// 发布仓库地址由集成/发布任务替换为真实 URL；先占位保证链接控件版式完整
     private static let repositoryURL = URL(string: "https://github.com/linzhongyang/mactool")!
 
+    private let settings: SettingsStore
+
     // T-055：更新接线状态走 @State + .task 而非属性初始化器持单例——
     // View 属性初始化在非隔离上下文执行，取 @MainActor 的 UpdaterController.shared 会破隔离；
     // body/.task 天然主隔离，合法访问点
     @State private var updateConfigured = false
     @State private var canCheckForUpdates = false
+    // 占位域被拦时给出可见说明（fail-visible）——按钮不再是哑的，点击有反馈
+    @State private var blockedNoticeVisible = false
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
     }
 
-    public init() {}
+    public init(settings: SettingsStore) {
+        self.settings = settings
+    }
 
     public var body: some View {
         Form {
@@ -243,11 +289,25 @@ public struct AboutPane: View {
                 }
                 PreferenceRow("软件更新", subtitle: updateConfigured ? "Sparkle 自动更新（EdDSA 签名）" : "更新通道未开通（上线后启用）") {
                     Button("检查更新…") {
-                        UpdaterController.shared.checkNow()
+                        // 裁决纯函数化：被拦时亮说明而非无声（Sparkle 检查中的重入由 disabled 防）
+                        switch UpdateCheckDecision.resolve(
+                            isConfigured: updateConfigured,
+                            canCheckForUpdates: canCheckForUpdates
+                        ) {
+                        case .check:
+                            UpdaterController.shared.checkNow()
+                        case .blocked:
+                            blockedNoticeVisible = true
+                        }
                     }
-                    // 占位阶段（SUFeedURL 指 .invalid）canCheckForUpdates 恒 false：按钮可见但不可点，
-                    // 上线换真 plist 后自动激活——UI 不用随上线再改
-                    .disabled(!canCheckForUpdates)
+                    // 仅"已配置但 Sparkle 正在检查"禁用防重入；未配置保持可点以给出说明
+                    .disabled(updateConfigured && !canCheckForUpdates)
+                }
+                if blockedNoticeVisible && !updateConfigured {
+                    Text(l10n(.updateChannelBlocked))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 // TODO(T-055 上线): SUFeedURL/SUPublicEDKey 换真值 + appcast 发布后，
                 // 更新说明按语言分发与失败降级驱动（OG-FR-200）在此扩展
@@ -266,5 +326,9 @@ public struct AboutPane: View {
                 canCheckForUpdates = flag
             }
         }
+    }
+
+    private func l10n(_ key: LocalizationKey) -> String {
+        settings.localization.string(key)
     }
 }

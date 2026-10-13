@@ -6,6 +6,7 @@ import Combine
 public final class StatusBarController: NSObject, NSMenuDelegate {
     private let store: SystemStatusStore
     private let settings: SettingsStore
+    private var localization: Localization
     private let statusItem: NSStatusItem
     private var cancellables: Set<AnyCancellable> = []
     private var lastRenderedScene: IconSceneState?
@@ -14,11 +15,17 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     private var lastGlow: Double??
     private var onTogglePopover: ((NSStatusBarButton) -> Void)?
     private var onOpenSettings: (() -> Void)?
-    private lazy var menu: NSMenu = buildMenu()
+    /// internal 供测试断言菜单标题随语言重建（@testable）
+    lazy var menu: NSMenu = buildMenu()
 
-    public init(store: SystemStatusStore, settings: SettingsStore) {
+    public init(
+        store: SystemStatusStore,
+        settings: SettingsStore,
+        localization: Localization = Localization(language: .system)
+    ) {
         self.store = store
         self.settings = settings
+        self.localization = localization
         self.statusItem = NSStatusBar.system.statusItem(
             withLength: NSStatusItem.squareLength
         )
@@ -64,6 +71,19 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
 
     public func setVisible(_ visible: Bool) {
         statusItem.isVisible = visible
+    }
+
+    /// 弹层锚点（Dock 点击接线，A2·S2）：菜单栏图标可见才有锚——
+    /// dockOnly 隐藏期返回 nil，Dock 点击由组合根降级开设置（弹层无处锚定）
+    public var anchorButton: NSStatusBarButton? {
+        statusItem.isVisible ? statusItem.button : nil
+    }
+
+    /// 语言切换接线（组合根订阅 settings.appLanguage 后调）：三个菜单标题全部来自本地化表，
+    /// 整体重建比逐项改题干净（菜单此刻未挂载——configure 后 statusItem.menu 恒 nil，直到右键）
+    public func updateLocalization(_ newLocalization: Localization) {
+        localization = newLocalization
+        menu = buildMenu()
     }
 
     public func startObserving() {
@@ -116,21 +136,39 @@ public final class StatusBarController: NSObject, NSMenuDelegate {
     }
 
     private func buildMenu() -> NSMenu {
-        let menu = NSMenu()
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+        return Self.makeMenu(localization: localization, version: version, settingsTarget: self)
+    }
+
+    /// 菜单构建（internal 供测试断言标题取自本地化表）：version 显式注入避免测试读真 Bundle；
+    /// settingsTarget 由实例接线传入，测试传 nil（action 选择子照常携带）
+    static func makeMenu(
+        localization: Localization,
+        version: String,
+        settingsTarget: AnyObject? = nil
+    ) -> NSMenu {
+        let menu = NSMenu()
         let versionItem = NSMenuItem(
-            title: "状态管家 v\(version)", action: nil, keyEquivalent: ""
+            title: String(format: localization.string(.menuVersion), version),
+            action: nil,
+            keyEquivalent: ""
         )
         versionItem.isEnabled = false
         menu.addItem(versionItem)
         let settingsItem = NSMenuItem(
-            title: "设置…", action: #selector(settingsClicked), keyEquivalent: ","
+            title: localization.string(.menuSettings),
+            action: #selector(StatusBarController.settingsClicked),
+            keyEquivalent: ","
         )
-        settingsItem.target = self
+        settingsItem.target = settingsTarget
         menu.addItem(settingsItem)
         menu.addItem(.separator())
         menu.addItem(
-            NSMenuItem(title: "退出状态管家", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+            NSMenuItem(
+                title: localization.string(.menuQuit),
+                action: #selector(NSApplication.terminate(_:)),
+                keyEquivalent: "q"
+            )
         )
         return menu
     }

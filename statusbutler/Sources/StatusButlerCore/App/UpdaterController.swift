@@ -29,6 +29,17 @@ public struct UpdaterFeedInfo: Equatable, Sendable {
     }
 }
 
+/// 手动"检查更新"的裁决（纯函数，测试钉死四情形）：配置齐备且 Sparkle 空闲才真检查；
+/// 其余一律拦下并让 UI 给出可见说明——fail-safe（占位域）与 fail-visible（不再是哑按钮）并存
+public enum UpdateCheckDecision: Equatable, Sendable {
+    case check
+    case blocked
+
+    public static func resolve(isConfigured: Bool, canCheckForUpdates: Bool) -> UpdateCheckDecision {
+        isConfigured && canCheckForUpdates ? .check : .blocked
+    }
+}
+
 @MainActor
 public final class UpdaterController: ObservableObject {
     /// 设置页共享单例：SPUStandardUpdaterController 全 App 只允许一个活跃实例
@@ -56,6 +67,12 @@ public final class UpdaterController: ObservableObject {
             startingUpdater: info.isConfigured, updaterDelegate: nil, userDriverDelegate: nil
         )
         canCheckForUpdates = info.isConfigured && controller.updater.canCheckForUpdates
+    }
+
+    /// 启动接线点（AppEnvironment.start 调用）：SPU 实例的起停已在 init 绑定 isConfigured，
+    /// 这里刷新 canCheckForUpdates 供设置页绑定（幂等——重复调用无副作用）
+    public func start() {
+        canCheckForUpdates = feedInfo.isConfigured && controller.updater.canCheckForUpdates
     }
 
     /// 设置页"检查更新"入口。占位阶段静默拦下（fail-safe）；接线见 AboutPane
