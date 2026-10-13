@@ -20,6 +20,8 @@ public final class SettingsStore: ObservableObject {
         static let footerSlot = "footerSlotID"
         static let launchAtLogin = "launchAtLogin"
         static let appLanguage = "appLanguage"
+        static let naturalScrolling = "naturalVolumeScrolling"
+        static let iCloudSync = "iCloudSyncEnabled"
         // telemetryConsent 走 TelemetryPolicy.consentKey（与调度器持久层同键互读，
         // 单点登记在 TelemetryPolicy，此处不另设键防两处漂移）
     }
@@ -70,6 +72,17 @@ public final class SettingsStore: ObservableObject {
         }
     }
 
+
+    /// 弹层音量滚轮自然方向（A2·S3，β 面板消费）
+    @Published public var naturalVolumeScrolling: Bool {
+        didSet { defaults.set(naturalVolumeScrolling, forKey: Key.naturalScrolling) }
+    }
+
+    /// iCloud 设置同步总开关（E8，默认关）
+    @Published public var iCloudSyncEnabled: Bool {
+        didSet { defaults.set(iCloudSyncEnabled, forKey: Key.iCloudSync) }
+    }
+
     /// 语言代数：Localization 是值类型、视图无法观察其"重建"——每次切换 +1 作为刷新信号，
     /// 视图读 settings.localization 的同时观察本值即可随语言重算文案
     @Published public private(set) var languageVersion = 0
@@ -106,6 +119,14 @@ public final class SettingsStore: ObservableObject {
         }
         showsChargingEffect = defaults.bool(forKey: Key.chargingEffect)
         footerSlotID = defaults.string(forKey: Key.footerSlot) ?? "volume"
+        if defaults.object(forKey: Key.naturalScrolling) == nil {
+            defaults.set(true, forKey: Key.naturalScrolling)
+        }
+        naturalVolumeScrolling = defaults.bool(forKey: Key.naturalScrolling)
+        if defaults.object(forKey: Key.iCloudSync) == nil {
+            defaults.set(false, forKey: Key.iCloudSync)
+        }
+        iCloudSyncEnabled = defaults.bool(forKey: Key.iCloudSync)
         if let service = loginItem, service.isSupported {
             // 系统注册态优先于存储偏好：手动移除过的登录项不该显示为"开"
             launchAtLogin = service.status.isOn
@@ -113,6 +134,14 @@ public final class SettingsStore: ObservableObject {
             launchAtLogin = defaults.bool(forKey: Key.launchAtLogin)
         }
         appLanguage = AppLanguage(rawValue: defaults.string(forKey: Key.appLanguage) ?? "") ?? .system
+        if defaults.object(forKey: Key.naturalScrolling) == nil {
+            defaults.set(true, forKey: Key.naturalScrolling)
+        }
+        naturalVolumeScrolling = defaults.bool(forKey: Key.naturalScrolling)
+        if defaults.object(forKey: Key.iCloudSync) == nil {
+            defaults.set(false, forKey: Key.iCloudSync)
+        }
+        iCloudSyncEnabled = defaults.bool(forKey: Key.iCloudSync)
         telemetryConsent = TelemetryConsent(rawValue: defaults.string(forKey: TelemetryPolicy.consentKey) ?? "") ?? .notAsked
     }
 

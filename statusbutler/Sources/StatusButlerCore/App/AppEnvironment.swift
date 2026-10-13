@@ -15,6 +15,7 @@ public final class AppEnvironment {
     private let settingsWindowController: SettingsWindowController
     private let onboardingWindowController: OnboardingWindowController
     public let automation: AutomationCoordinator
+    private let liveServices: LiveServices?
     private var chargingCancellables: Set<AnyCancellable> = []
     // T-058（A14 审计二/三）：更新与遥测两座孤岛上岸——引擎早已全绿，缺的就是这里的 start 接线
     private let updaterController: UpdaterController
@@ -32,7 +33,8 @@ public final class AppEnvironment {
         onboardingWindowController: OnboardingWindowController,
         automation: AutomationCoordinator = AutomationCoordinator(),
         updaterController: UpdaterController = .shared,
-        telemetryScheduler: TelemetryScheduler? = nil
+        telemetryScheduler: TelemetryScheduler? = nil,
+        liveServices: LiveServices? = nil
     ) {
         self.store = store
         self.settings = settings
@@ -42,6 +44,7 @@ public final class AppEnvironment {
         self.settingsWindowController = settingsWindowController
         self.onboardingWindowController = onboardingWindowController
         self.automation = automation
+        self.liveServices = liveServices
         self.updaterController = updaterController
         self.telemetryScheduler = telemetryScheduler
         self.localization = Localization(language: settings.appLanguage)
@@ -102,6 +105,7 @@ public final class AppEnvironment {
     public func stop() {
         store.stop()
         appIconController.stop()
+        liveServices?.stop()
         chargingEffectClock.stop()
         chargingCancellables.removeAll()
         placementCancellable = nil
@@ -151,7 +155,9 @@ public final class AppEnvironment {
             localization: Localization(language: settings.appLanguage)
         )
         let appIconController = AppIconController(store: store, settings: settings)
-        let popover = StatusPopoverController(viewModel: PanelViewModel(store: store))
+        let automation = AutomationCoordinator()
+        let services = LiveServices(settings: settings, store: store, automation: automation)
+        let popover = StatusPopoverController(viewModel: services.panelViewModel)
         let settingsWindow = SettingsWindowController(settings: settings)
         // 引导完成的同一时机做遥测首次询问（OG-FR-201：默认关，明示同意才开；
         // NSAlert 模态只存在于真机运行路径——单测/CI 不构造 live()）
@@ -192,7 +198,9 @@ public final class AppEnvironment {
             statusBarController: controller, appIconController: appIconController,
             popoverController: popover, settingsWindowController: settingsWindow,
             onboardingWindowController: onboarding,
-            telemetryScheduler: telemetryScheduler
+            automation: automation,
+            telemetryScheduler: telemetryScheduler,
+            liveServices: services
         )
     }
 }

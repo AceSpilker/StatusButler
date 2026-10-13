@@ -23,7 +23,7 @@ public enum HistoryEventKind {
 /// HS-01 每日一行的数据源：真实实现走 IOPowerSources 设计容量口径；
 /// 拿不到时集成方可注入"当前电量近似容量"的简版（cycleCount 无来源记 0）。
 /// 返回 nil = 本次跳过（明日再记），绝不写占位行污染趋势。
-public protocol BatteryDetailsReading: Sendable {
+public protocol BatteryCapacityReading: Sendable {
     func read() async -> (capacityPercent: Int, cycleCount: Int)?
 }
 
@@ -32,7 +32,7 @@ public protocol BatteryDetailsReading: Sendable {
 @MainActor
 public final class HistoryFeed {
     private let store: SystemStatusStore
-    private let details: (any BatteryDetailsReading)?
+    private let details: (any BatteryCapacityReading)?
     /// 库句柄公开只读面（测试与未来体检 UI 查询共用）；nil = 落盘不可用（静默旁路）
     public private(set) var database: HistoryDatabase?
     private var cancellables: Set<AnyCancellable> = []
@@ -52,7 +52,7 @@ public final class HistoryFeed {
     public init(
         store: SystemStatusStore,
         databaseURL: URL? = HistoryFeed.defaultDatabaseURL(),
-        details: (any BatteryDetailsReading)? = nil
+        details: (any BatteryCapacityReading)? = nil
     ) {
         self.store = store
         self.baseline = store.snapshot
@@ -70,7 +70,7 @@ public final class HistoryFeed {
     public init(
         store: SystemStatusStore,
         database: HistoryDatabase?,
-        details: (any BatteryDetailsReading)? = nil
+        details: (any BatteryCapacityReading)? = nil
     ) {
         self.store = store
         self.baseline = store.snapshot

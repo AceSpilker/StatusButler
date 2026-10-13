@@ -120,7 +120,7 @@ public enum SettingsSlotOptions {
         return (implemented + pending).map { id in
             SettingsSlotOption(
                 id: id,
-                title: titleByID[id] ?? id,
+                title: id.hasPrefix("plugin:") ? "插件 · " + String(id.dropFirst(7)) : (titleByID[id] ?? id),
                 isPending: entries[id] is PendingSlot
             )
         }

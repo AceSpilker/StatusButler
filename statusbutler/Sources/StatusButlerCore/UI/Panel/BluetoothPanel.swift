@@ -4,15 +4,8 @@ import IOKit
 
 // MARK: - 蓝牙操作（A2·S7：设备行连接/断开，A14-β）
 
-public protocol BluetoothOperating: Sendable {
-    /// address 为 IOBluetooth addressString（与 BluetoothDeviceInfo.address 同源）。
-    /// 返回 false = 系统拒绝/设备失联——如实回报，面板不伪装成功
-    @discardableResult
-    func setConnected(_ connected: Bool, address: String) async -> Bool
-}
-
 /// IOBluetooth 公开通道真实现（与系统蓝牙菜单同一落点）。ObjC 往返折进 detached 任务
-public struct IOBluetoothOperator: BluetoothOperating {
+public struct IOBluetoothOperator {
     public init() {}
 
     public func setConnected(_ connected: Bool, address: String) async -> Bool {
@@ -136,4 +129,9 @@ public enum BluetoothPanelDisplay {
         }
         return parts.joined(separator: " · ")
     }
+}
+
+extension IOBluetoothOperator: BluetoothOperating {
+    public func connect(address: String) async -> Bool { await setConnected(true, address: address) }
+    public func disconnect(address: String) async -> Bool { await setConnected(false, address: address) }
 }

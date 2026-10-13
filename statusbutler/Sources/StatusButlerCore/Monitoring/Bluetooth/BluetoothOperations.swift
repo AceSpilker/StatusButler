@@ -15,6 +15,14 @@ public protocol BluetoothOperating: Sendable {
     func disconnect(address: String) async -> Bool
 }
 
+extension BluetoothOperating {
+    /// 面板单入口便捷形态（默认实现走双方法）
+    @discardableResult
+    public func setConnected(_ connected: Bool, address: String) async -> Bool {
+        connected ? await connect(address: address) : await disconnect(address: address)
+    }
+}
+
 // MARK: - 设备句柄收窄
 
 /// IOBluetoothDevice 的最小收窄：真机由 IOBluetoothDevice 满足；测试注入假句柄

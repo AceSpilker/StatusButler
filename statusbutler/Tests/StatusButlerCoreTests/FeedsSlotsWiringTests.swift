@@ -140,7 +140,7 @@ final class StubWeatherProvider: WeatherProviding, @unchecked Sendable {
 }
 
 /// 假电池详情（metric_daily 注入源）
-struct StubBatteryDetails: BatteryDetailsReading {
+struct StubBatteryDetails: BatteryCapacityReading {
     let reading: (capacityPercent: Int, cycleCount: Int)?
     func read() async -> (capacityPercent: Int, cycleCount: Int)? { reading }
 }

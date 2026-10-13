@@ -66,6 +66,9 @@ struct PanelCompleteTests {
 
     @MainActor
     final class RecordingBluetoothOperator: BluetoothOperating {
+        func connect(address: String) async -> Bool { await setConnected(true, address: address) }
+        func disconnect(address: String) async -> Bool { await setConnected(false, address: address) }
+
         private(set) var calls: [BluetoothCall] = []
         let result: Bool
         init(result: Bool = true) { self.result = result }

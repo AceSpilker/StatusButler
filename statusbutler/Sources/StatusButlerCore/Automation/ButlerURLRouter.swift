@@ -57,3 +57,13 @@ public struct ButlerURLRouter: Sendable {
         }
     }
 }
+
+extension URLRouteOutcome {
+    /// 非 URL 语境（面板/Intent）统一折算成 ActionOutcome
+    public var forceOutcome: ActionOutcome {
+        switch self {
+        case .handled(let outcome): return outcome
+        case .notOurs, .rejected: return .rejected(reason: "命令未路由或被拒")
+        }
+    }
+}

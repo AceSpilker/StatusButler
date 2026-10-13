@@ -82,7 +82,10 @@
     <tr><td>Sparkle 上线值</td><td>生成 EdDSA 密钥对，Info.plist 换真域名+公钥</td></tr>
   </table>
 
-  <h2>五、审计结论与建议下一步</h2>
+  <h2>五、2026-10-13 攻坚结果（复核）</h2>
+  <p>除熄屏（按要求排除）外，第二节 12 座孤岛中 11 座已全部挂线（LiveServices 统一装配），第三节缺失项已完成：App 壳三件套/弹层下钻三页+音量可调+滚动/蓝牙操作+电量/DDC 音量路由/音频输入/聆听模式（编译开关默认关待白名单决策）/E8 CloudKit（默认关）/E9 App Shortcuts/E3 AX 通道（macOS 26.5 SystemUIServer 限制如实降级）。测试 515→680。<strong>仍开放：聆听模式白名单决策、iDevice helper 真机、DriverKit entitlement、Developer ID、真机手感验收（滚动/深链/ Ventura 矩阵）。</strong></p>
+
+  <h2>六、审计结论与建议下一步</h2>
   <div class="callout c-info">
   <strong>一句话：骨架与引擎成色很足（515 用例是真金），但"最后一公里"集成层有一个系统性缺口——大量引擎停在孤岛状态，主 App 装配清单太薄（live() 只装配了 12 个对象，而全库有 24 个模块域）。</strong><br>
   建议下一轮（可再并行 4 agent）：① 大接线轮——把 12 座孤岛按"小/中"项全部挂进 AppEnvironment 与面板/设置/动作中心（含小组件快照写入者，这是最影响观感的一处）；② 补做单实例锁+登录项+Dock 点击行为（App 壳完整性）；③ 弹层下钻三页 + 音量可调；④ E8 iCloud 与 App Shortcuts 二选一排期。四、⛔ 项等你账号/设备就绪后随时插入。
