@@ -52,6 +52,24 @@ public enum VersionGate {
     }
 }
 
+public extension VersionGate {
+    /// AX 路线实机回归名单（A14-ε 落位）：macOS 26 已实测接入；27 未验不放行。
+    /// 与 defaultVerifiedMajors（保守空名单）分开：后者钉"未回归前一律禁用"的
+    /// 交付期语义，两者同名默认值会在"骨架交付/真机放行"两阶段间隐式漂移。
+    /// 注：26 放行指版本门认可该版本可跑 AX 路线；个别机型/会话上 SystemUIServer
+    /// 仍可拒绝读取（AXMenuBar 返回 cannotComplete），由枚举器 lastStatus 二级降级。
+    static let axVerifiedMajors: [Int] = [26]
+
+    /// ProcessInfo 实测门：本机大版本是否过 AX 白名单。
+    /// 装配点（MenubarTidyAssembly）用它裁决"真件 or stub"——不赌编译期目标版本。
+    static func hostIsSupportedForAX() -> Bool {
+        isSupported(
+            osMajor: ProcessInfo.processInfo.operatingSystemVersion.majorVersion,
+            verified: axVerifiedMajors
+        )
+    }
+}
+
 // MARK: - 会话账本（MB-04/05 崩溃安全）
 /// 纯内存记录"本会话我们隐藏过谁"，绝不落盘（无 UserDefaults/文件写路径）：
 /// 退出即全恢复——管家退出或崩溃时内存消失，下次登录所有图标以系统默认态（可见）出现，
