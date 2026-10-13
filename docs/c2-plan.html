@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>C2 · 收官开发计划 — 状态管家 StatusButler</title>
+<style>
+  :root{--ink:#1a1d21;--sub:#5c6470;--brand:#0a7d6f;--line:#e4e7ec;--bg:#fff;--soft:#f6f8fa;--ok:#1e9e52;--warn:#b7791f;--bad:#d0453c;--purple:#5b3fa8}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.78;font-size:15px}
+  .wrap{max-width:920px;margin:0 auto;padding:44px 32px 80px}
+  .kicker{color:var(--brand);font-weight:700;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px}
+  h1{font-size:29px;margin-bottom:10px}
+  .lede{font-size:16px;color:var(--sub);margin-bottom:26px}
+  h2{font-size:21px;margin:42px 0 12px;padding-left:12px;border-left:4px solid var(--brand)}
+  h3{font-size:16px;margin:24px 0 8px}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0 8px 22px}
+  li{margin:4px 0}
+  code{background:var(--soft);border-radius:5px;padding:1px 6px;font-size:.88em;font-family:"SF Mono",Menlo,monospace}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+  th{background:var(--soft);text-align:left;font-weight:650}
+  th,td{border:1px solid var(--line);padding:7px 10px;vertical-align:top}
+  tr:nth-child(even) td{background:#fafbfd}
+  .badge{display:inline-block;border-radius:20px;padding:1px 10px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .b-blue{background:#e8f0fe;color:#22509f}.b-green{background:#e5f6ec;color:var(--ok)}
+  .b-orange{background:#fdf1e0;color:var(--warn)}.b-gray{background:#eef1f4;color:var(--sub)}
+  .b-red{background:#fdeae8;color:var(--bad)}.b-purple{background:#f0eafb;color:var(--purple)}
+  .callout{border-radius:12px;padding:13px 17px;margin:14px 0;font-size:13.5px;border:1px solid;background:#eef6f4;border-color:#c6e2dc;color:#1c5a50}
+  a{color:var(--brand);text-decoration:none}a:hover{text-decoration:underline}
+  .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
+  .stat{border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:var(--soft)}
+  .stat .n{font-size:24px;font-weight:750;color:var(--brand)}
+  .stat .l{font-size:12px;color:var(--sub)}
+  .bar{height:9px;border-radius:6px;background:#e6eaef;overflow:hidden;margin-top:5px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#0a7d6f,#2fb59f);width:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">C2 / Completion Plan</div>
+  <h1>收官开发计划：清零 A15 残余</h1>
+  <p class="lede">来源：<a href="a15-final-audit.html" target="_parent">A15 终版审查</a>中全部非完整判定项（16 部分 + 4 未做 + 决策项），拆解为 <strong>26 个任务（T-201~T-226）· 四个批次</strong>，延续 C1 的看板/测试报告/验收体系与 AGENTS 工程纪律。判定"完整"的 12 项不在此列。</p>
+
+  <h2>📊 总览仪表盘（自动统计）</h2>
+  <div class="dash">
+    <div class="stat"><div class="n" id="d-total">–</div><div class="l">任务总数</div></div>
+    <div class="stat"><div class="n" id="d-done" style="color:var(--ok)">–</div><div class="l">已完成</div></div>
+    <div class="stat"><div class="n" id="d-doing" style="color:var(--warn)">–</div><div class="l">进行中</div></div>
+    <div class="stat"><div class="n" id="d-todo" style="color:var(--sub)">–</div><div class="l">未开始</div></div>
+    <div class="stat"><div class="n" id="d-pct">–</div><div class="l">完成率</div><div class="bar"><i id="d-bar"></i></div></div>
+  </div>
+
+  <h2>批次 P1 · 点亮接线（T-201~210，全部"最后一跳"量级，一轮 agent 可清）</h2>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">审计出处</th><th style="width:70px">状态</th></tr>
+    <tr><td>T-201</td><td>天气城市设置：内置城市表（搜索/拼音）+ GeneralPane 选择器 + WeatherFeed location 闭包接线——<strong>天气点亮的前提</strong></td><td>E5/S9</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-202</td><td>DDC 音量路由接入：组合 VolumeWriting（DDCRouting 判定→DDC 0x62 或 AppleScript），弹层滑杆/滚轮/CLI 全走它</td><td>S6/E14</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-203</td><td>弹层性能分区数据行：PerfFeed 注入面板 + GPU 回退链展示 + P/E 核分组行</td><td>E4</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-204</td><td>音频输入行与设置开关（默认关）：引擎已有，补面板行+设置项</td><td>S6</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-205</td><td>iDevice 占位行：Apple 设备分区（MobileBatterySummary，unavailable 态引导文案）</td><td>S8</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-206</td><td>热键设置页（E22）：录制 UI + 冲突检测 + HotKeyCenter 注册接线</td><td>E22</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-207</td><td>历史查看页（E10）：电池健康曲线 + 事件日志（筛选/搜索）+ CSV 导出</td><td>E10/S4</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-208</td><td>主题导入导出：NSOpenPanel/NSSavePanel + 校验差异预览 + 应用/一键还原</td><td>E7/S9</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-209</td><td>分区排序编辑器：PanelPane 内上移/下移/显隐（PanelLayout 模型已有）</td><td>S3/S9</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-210</td><td>两枚微件合并：Dock 真点位弹层锚定（屏幕坐标入口）+ 音量 up/down 步进（glue TODO）</td><td>S2/E9</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h2>批次 P2 · 页面与自动化（T-211~216）</h2>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">审计出处</th><th style="width:70px">状态</th></tr>
+    <tr><td>T-211</td><td>会议条（E15）：进行中会议顶部条 + 一键入会（链接检测已有）+ 会议中静音动作接线（T-041b）</td><td>E15</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-212</td><td>电池养护页（E13）：养护总览（充电上限/优化充电状态）+ 提醒规则 + 月度小结（数据来自 E10 库）</td><td>E13/S4</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-213</td><td>插件管理页（E16/SP-03）：扫描列表（名称/作者/刷新率/健康）+ 启停/重载 + 三连击复位</td><td>E16</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-214</td><td>昼夜主题 + DDC 亮度面板（E23+E14 同域）：跟随外观/日出日落切主题 + 外接屏亮度滑杆 + 自动调光</td><td>E14/E23</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-215</td><td>通知系统接线：温度警报（A5·TF-30）/电池养护提醒/体检每周提醒/充电起止——UNUserNotificationCenter + 频率限制，全部默认关</td><td>E11/E13/E18</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-216</td><td>动作中心 Shortcuts 钉选（E2/AC-03）：浏览系统快捷指令列表 + 钉进面板 + 执行</td><td>E2</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h2>批次 P3 · 半天件与可选（T-217~221）</h2>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">审计出处</th><th style="width:70px">状态</th></tr>
+    <tr><td>T-217</td><td>网络测速（E17）：networkQuality 封装 + 弹层"测一下"入口 + 结果入 E10 历史</td><td>E17</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-218</td><td>磁盘 I/O 与空间预警（E19）：采样器 + 性能面板第四图 + 低于阈值通知（并入 T-215 通道）</td><td>E19</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-219</td><td>iCloud 设置收尾（E8）：GeneralPane 开关 UI + entitlements 模板文件 + 容器配置用户清单（容器创建本身属外部）</td><td>E8</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-220</td><td>趣味皮肤（E24）：CPU 负载驱动小动画槽位皮肤，默认关、随主题分发</td><td>E24</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-221</td><td>更新扫描（E25）：Homebrew cask 数据源比对提示（https 三道闸纪律），不代装</td><td>E25</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h2>批次 P4 · 规格级与决策（T-222~226）</h2>
+  <table class="tasks">
+    <tr><th style="width:62px">任务号</th><th>内容</th><th style="width:120px">审计出处</th><th style="width:70px">状态</th></tr>
+    <tr><td>T-222</td><td><strong>风扇特权 Helper + 温控控制 UI</strong>（T-026b，计划内最大单件）：SMAppService LaunchDaemon + 本地 XPC（键白名单 FS!/F{n}Md）+ 三模式切换/曲线编辑器/接管徽标/自愈落盘——安装需用户管理员确认</td><td>E11</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-223</td><td>菜单栏整理上线（E3）：AppEnvironment 装配 MenubarTidyAssembly + 设置页（规则编辑/AX 状态显示）；实际隐藏效果受 macOS 26.5 SystemUIServer 限制，状态如实展示</td><td>E3</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-224</td><td>聆听模式白名单决策与接线：<strong>待你拍板</strong>——同意则扩红线四白名单（蓝牙音频域 lstm/lsms）+ 编译开关打开 + 面板入口（半日）</td><td>S6/决策</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-225</td><td>熄屏接线（E21）：<strong>待你确认是否恢复</strong>——引擎就绪，动作中心 screen/off + 守护模式接线（小）</td><td>E21/决策</td><td><span class="badge b-gray">未开始</span></td></tr>
+    <tr><td>T-226</td><td>真机验收矩阵：Ventura 兼容/滚动手感/深链跳转/Dock 锚定/小组件摆放/蓝牙操作——产出验收报告入 C2</td><td>T-057 残余</td><td><span class="badge b-gray">未开始</span></td></tr>
+  </table>
+
+  <h2>外部依赖清单（非代码任务，等你的动作）</h2>
+  <ul>
+    <li>Apple Developer 账号（$99/年）→ Developer ID 签名/公证 → T-056 publish 挡位 + Sparkle 真域名与 EdDSA 公钥</li>
+    <li>DriverKit audio entitlement 申请（E20 每 App 音量驱动）</li>
+    <li>iPhone USB 连接（T-053b iDevice helper 真机验证）</li>
+    <li>CloudKit 容器 <code>iCloud.com.linzhongyang.statusbutler</code> 创建 + SettingsSnapshot record type（T-219 给出清单）</li>
+  </ul>
+
+  <h2>测试报告（每任务完成后登记）</h2>
+  <table>
+    <tr><th style="width:62px">任务号</th><th style="width:96px">日期</th><th>测试内容（命令 / 用例数 / 结果）</th><th style="width:90px">证据提交</th></tr>
+    <tr><td colspan="4" style="color:var(--sub);text-align:center;padding:16px">尚无测试报告</td></tr>
+  </table>
+
+  <div class="callout">📌 执行方式延续：P1/P2 适合 4~5 agent 并行（文件分区：设置区/弹层区/服务区），P3 串行或小并行，P4 逐项（T-222 单独一轮）。每个任务完成即更新本表+测试报告+commit 尾注 <code>(T-2xx)</code>。</div>
+
+  <script>
+    (function(){
+      var rows=document.querySelectorAll('table.tasks tr td:last-child .badge');
+      var total=0,done=0,doing=0;
+      rows.forEach(function(b){total++;var t=b.textContent.trim();if(t==='已完成')done++;else if(t==='进行中')doing++;});
+      function set(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+      set('d-total',total);set('d-done',done);set('d-doing',doing);set('d-todo',total-done-doing);
+      var pct=total?Math.round(done/total*100):0;set('d-pct',pct+'%');
+      var bar=document.getElementById('d-bar');if(bar)bar.style.width=pct+'%';
+    })();
+  </script>
+</div>
+</body>
+</html>
