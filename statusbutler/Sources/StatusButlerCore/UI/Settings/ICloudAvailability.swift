@@ -31,6 +31,25 @@ public enum ICloudSyncStatus: Equatable, Sendable {
 }
 
 public enum ICloudAvailability {
+
+    public enum ICloudProbeError: Error {
+        case noEntitlement
+    }
+
+    /// 无 entitlement 时 CKContainer 构造会 trap——先查再调（crash 报告 StatusButler-2026-10-13-153447）
+    public static func hasCloudKitEntitlement() -> Bool {
+        guard let path = Bundle.main.path(forResource: "StatusButler", ofType: "entitlements")
+            ?? Bundle.main.path(forResource: "_embedded", ofType: "entitlements") else {
+            // ad-hoc 签名的本地构建无 entitlements plist——检查 code signing entitlements
+            #if DEBUG
+            return false  // 本地开发构建恒不探测 CKContainer
+            #else
+            return false
+            #endif
+        }
+        return true
+    }
+
     /// 容器配置用户清单（容器创建本身属外部，见 docs/c2-plan 外部依赖清单）
     public static let checklistText = """
         iCloud 同步需完成两项外部配置：\
@@ -55,8 +74,13 @@ public enum ICloudAvailability {
 
     /// 探测：makeStore 注入面默认走 CloudKitStore.makeValidated（与 LiveServices
     /// 开机装配同一出口——两处对"容器可用"的口径永远一致）；成功即 available
+    /// CKContainer(identifier:) 在无 iCloud entitlements 的进程里直接 SIGTRAP（不是 throw）——
+    /// 设置面板状态行在启动期就会调 probe，必须在调 CKContainer 前检查 entitlements 存在
     public static func probe(
         makeStore: @escaping @Sendable () async throws -> Void = {
+            guard Self.hasCloudKitEntitlement() else {
+                throw ICloudProbeError.noEntitlement
+            }
             _ = try await CloudKitStore.makeValidated()
         }
     ) async -> ICloudSyncStatus {
