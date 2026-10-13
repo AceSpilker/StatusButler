@@ -109,16 +109,17 @@ if (( DRY_RUN )); then
     fi
     echo "[dry-run] 工作目录: ${WORK}"
     echo "[dry-run] helper 产物: ${WORK}/${HELPER_NAME}"
-    if [[ -d "$HELPER_SOURCES" ]]; then
-        echo "[dry-run] helper 源码: ${HELPER_SOURCES}（就绪）"
+    if [[ -f "$HELPER_SOURCES/main.m" ]]; then
+        echo "[dry-run] helper 源码: ${HELPER_SOURCES}/main.m（就绪）"
     else
-        echo "[dry-run] helper 源码: ${HELPER_SOURCES}（缺失，T-053b 交付 Support/MobileBatteryHelper/*.m）"
+        echo "[dry-run] helper 源码: ${HELPER_SOURCES}/main.m（缺失）"
     fi
     echo "[dry-run] 依赖（按构建顺序，tag+commit 双锁）:"
     while IFS=$'\t' read -r name repository commit tag version; do
         echo "[dry-run]   ${version}  ${name}  ${repository}  tag=${tag}  commit=${commit}"
     done <<< "$PLAN"
     echo "[dry-run] 构建序列: openssl(Configure) → libplist → libimobiledevice-glue → libusbmuxd → libtatsu → libimobiledevice(autotools)"
+    echo "[dry-run] 编译段: clang -fobjc-arc 编译 ${HELPER_SOURCES}/*.m（main.m），pkg-config 链接 libimobiledevice-1.0/libusbmuxd-2.0/libplist-2.0 → ${WORK}/${HELPER_NAME}"
     echo "[dry-run] 产物清单: ${WORK}/${HELPER_NAME}  ${WORK}/dependencies.json  ${WORK}/dependency-locks.txt"
     exit 0
 fi
@@ -192,12 +193,14 @@ build_autotools libusbmuxd --without-inotify
 build_autotools libtatsu
 build_autotools libimobiledevice --without-cython --without-readline --with-openssl
 
-# helper 源码是 T-053b 交付物：缺失给可行动的错误，不做任何"顺手生成占位"的动作
-if [[ ! -d "$HELPER_SOURCES" ]]; then
-    echo "错误: helper 源码目录不存在: $HELPER_SOURCES（T-053b 交付 Support/MobileBatteryHelper/*.m）" >&2
+# helper 源码（A14-δ 交付 Support/MobileBatteryHelper/main.m）：缺失给可行动的
+# 错误，不做任何"顺手生成占位"的动作
+if [[ ! -f "$HELPER_SOURCES/main.m" ]]; then
+    echo "错误: helper 源码缺失: ${HELPER_SOURCES}/main.m" >&2
     exit 2
 fi
 
+echo "[编译] helper: ${HELPER_SOURCES}/main.m → ${WORK}/${HELPER_NAME}（链接六库产物）"
 HELPER_CFLAGS="$(pkg-config --cflags libimobiledevice-1.0 libusbmuxd-2.0 libplist-2.0)"
 HELPER_LIBS="$(pkg-config --libs libimobiledevice-1.0 libusbmuxd-2.0 libplist-2.0)"
 "$CLANG" $CFLAGS -fobjc-arc -O2 -I"$PREFIX/include" \
